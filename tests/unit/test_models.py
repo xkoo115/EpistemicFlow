@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Any
 import pytest
 
-from models.base import Base, TimestampMixin
+from models.base import BaseModel
 from models.workflow_state import WorkflowState, WorkflowStage, WorkflowStatus
 
 
@@ -18,7 +18,7 @@ class TestBaseModel:
         """测试模型转字典"""
 
         # 创建测试模型实例
-        class TestModel(Base):
+        class TestModel(BaseModel):
             __tablename__ = "test_model"
 
             id: int = 1
@@ -26,6 +26,10 @@ class TestBaseModel:
             value: int = 100
 
             def __init__(self):
+                # 设置实例属性
+                self.id = 1
+                self.name = "test"
+                self.value = 100
                 # 模拟SQLAlchemy列
                 self.__table__ = type("Table", (), {"columns": []})()
                 self.__table__.columns = [
@@ -49,7 +53,7 @@ class TestBaseModel:
         """测试从字典更新模型"""
 
         # 创建测试模型实例
-        class TestModel(Base):
+        class TestModel(BaseModel):
             __tablename__ = "test_model"
 
             def __init__(self):
@@ -120,14 +124,13 @@ class TestWorkflowStateModel:
         )
 
         # 初始为None
-        assert workflow_state.metadata is None
+        assert workflow_state.metadata_json is None
 
         # 设置元数据
         test_metadata = {"creator": "user", "priority": "high"}
-        workflow_state.metadata = test_metadata
+        workflow_state.metadata_json = test_metadata
 
         # 验证设置成功
-        assert workflow_state.metadata == test_metadata
         assert workflow_state.metadata_json == test_metadata
 
     def test_workflow_state_add_agent_state(self):
@@ -166,7 +169,7 @@ class TestWorkflowStateModel:
         workflow_state.add_metadata("tags", ["ai", "research"])
 
         # 验证添加成功
-        assert workflow_state.metadata == {
+        assert workflow_state.metadata_json == {
             "creator": "test-user",
             "tags": ["ai", "research"],
         }

@@ -6,12 +6,17 @@
 import asyncio
 from typing import AsyncGenerator, Dict, Any
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.pool import NullPool
 
-from core.config import Settings, Environment, LLMConfig, LLMProvider
+
+from core.config import (
+    Settings,
+    Environment,
+    LLMConfig,
+    LLMProvider,
+    AppConfig,
+    DatabaseConfig,
+)
 from database.session import DatabaseManager, get_db_session
-from models.base import Base
 
 
 @pytest.fixture(scope="session")
@@ -27,7 +32,7 @@ def test_settings() -> Settings:
     """测试配置fixture"""
     # 创建测试配置
     settings = Settings(
-        app=Settings.AppConfig(
+        app=AppConfig(
             environment=Environment.TESTING,
             debug=True,
             host="127.0.0.1",
@@ -35,7 +40,7 @@ def test_settings() -> Settings:
             cors_origins=["http://localhost:3000"],
             api_prefix="/api",
         ),
-        database=Settings.DatabaseConfig(
+        database=DatabaseConfig(
             url="sqlite+aiosqlite:///:memory:",
             echo=False,
             pool_size=5,
@@ -69,47 +74,35 @@ def test_settings() -> Settings:
 
 
 @pytest.fixture(scope="session")
-async def test_db_manager(
-    test_settings: Settings,
-) -> AsyncGenerator[DatabaseManager, None]:
+async def test_db_manager(test_settings: Settings):
     """测试数据库管理器fixture"""
-    # 创建内存数据库引擎
-    engine = create_async_engine(
-        test_settings.database.url,
-        echo=test_settings.database.echo,
-        poolclass=NullPool,
-        future=True,
-    )
+    from models.workflow_state import Base
 
-    # 创建表
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # 临时替换全局settings
+    import core.config
+    original_settings = core.config.settings
+    core.config.settings = test_settings
 
     # 创建数据库管理器
     db_manager = DatabaseManager()
-    db_manager._engine = engine
-    db_manager._async_session_factory = None
+    db_manager.init_engine()
+
+    # 创建所有表
+    async with db_manager.engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     yield db_manager
 
     # 清理
-    await engine.dispose()
+    await db_manager.close()
+    core.config.settings = original_settings
 
 
 @pytest.fixture
-async def db_session(
-    test_db_manager: DatabaseManager,
-) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(test_db_manager):
     """数据库会话fixture"""
-    # 创建会话工厂
-    async_session_factory = test_db_manager.session_factory
-
-    async with async_session_factory() as session:
-        try:
-            yield session
-        finally:
-            await session.rollback()
-            await session.close()
+    async for session in test_db_manager.get_session():
+        yield session
 
 
 @pytest.fixture

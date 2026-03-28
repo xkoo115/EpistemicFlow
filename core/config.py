@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 
 
 class Environment(str, Enum):
@@ -119,15 +120,76 @@ class Settings(BaseSettings):
     @validator("llms", pre=True)
     def parse_llms_config(cls, v: Any) -> Dict[str, LLMConfig]:
         """解析大模型配置"""
+        # 从环境变量中扫描LLM配置
+        # 环境变量格式: LLM_{model_key}__{field}
+        env_vars = {}
+        for env_key, env_value in os.environ.items():
+            if env_key.startswith("LLM_") and "__" in env_key:
+                # 移除LLM_前缀
+                suffix = env_key[4:]  # len("LLM_") = 4
+                # 分割模型键和字段名
+                parts = suffix.split("__", 1)
+                if len(parts) != 2:
+                    continue
+                model_key, field_name = parts
+                # 忽略大小写
+                model_key = model_key.lower()
+                field_name = field_name.lower()
+                if model_key not in env_vars:
+                    env_vars[model_key] = {}
+                env_vars[model_key][field_name] = env_value
+
+        # 将环境变量字典转换为LLMConfig实例
+        result = {}
+        for model_key, config_dict in env_vars.items():
+            try:
+                result[model_key] = LLMConfig(**config_dict)
+            except Exception:
+                # 如果解析失败，跳过
+                continue
+
+        # 如果已有字典配置，合并（字典配置优先级高于环境变量）
         if isinstance(v, dict):
-            result = {}
             for key, config in v.items():
                 if isinstance(config, dict):
                     result[key] = LLMConfig(**config)
                 elif isinstance(config, LLMConfig):
                     result[key] = config
-            return result
-        return v
+        return result
+
+        # 从环境变量中扫描LLM配置
+        # 环境变量格式: LLM_{model_key}__{field}
+        env_vars = {}
+        print(
+            "DEBUG LLM env keys:",
+            [k for k in os.environ.keys() if k.startswith("LLM_")],
+        )
+        for env_key, env_value in os.environ.items():
+            if env_key.startswith("LLM_") and "__" in env_key:
+                # 移除LLM_前缀
+                suffix = env_key[4:]  # len("LLM_") = 4
+                # 分割模型键和字段名
+                parts = suffix.split("__", 1)
+                if len(parts) != 2:
+                    continue
+                model_key, field_name = parts
+                # 忽略大小写
+                model_key = model_key.lower()
+                field_name = field_name.lower()
+                if model_key not in env_vars:
+                    env_vars[model_key] = {}
+                env_vars[model_key][field_name] = env_value
+        print("DEBUG env_vars:", env_vars)
+
+        # 将环境变量字典转换为LLMConfig实例
+        result = {}
+        for model_key, config_dict in env_vars.items():
+            try:
+                result[model_key] = LLMConfig(**config_dict)
+            except Exception:
+                # 如果解析失败，跳过
+                continue
+        return result
 
     def get_llm_config(self, llm_name: Optional[str] = None) -> LLMConfig:
         """获取指定大模型配置"""

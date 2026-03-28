@@ -4,11 +4,17 @@
 """
 
 from typing import Any, Dict, Optional
-from sqlalchemy import String, Text, JSON, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from enum import Enum
 import json
+from datetime import datetime
 
-from .base import Base, TimestampMixin
+from sqlalchemy import String, Text, DateTime, JSON, Integer, Enum as SQLEnum, Column, func
+from sqlalchemy.orm import declarative_base
+
+from .base import BaseModel
+
+
+Base = declarative_base()
 
 
 class WorkflowStage(str, Enum):
@@ -37,83 +43,34 @@ class WorkflowStatus(str, Enum):
     CANCELLED = "cancelled"  # 取消
 
 
-class WorkflowState(Base, TimestampMixin):
+class WorkflowState(Base):
     """工作流状态表
 
     用于记录多智能体执行的状态机节点，支持Saga模式
     """
-
     __tablename__ = "workflow_states"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True, autoincrement=True, comment="主键ID"
-    )
-
-    session_id: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False,
-        index=True,
-        comment="会话ID，用于关联同一工作流的所有状态",
-    )
-
-    workflow_name: Mapped[str] = mapped_column(
-        String(128), nullable=False, comment="工作流名称"
-    )
-
-    current_stage: Mapped[WorkflowStage] = mapped_column(
-        String(32), nullable=False, comment="当前阶段"
-    )
-
-    status: Mapped[WorkflowStatus] = mapped_column(
-        String(32), nullable=False, default=WorkflowStatus.PENDING, comment="当前状态"
-    )
-
-    agent_state_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSON, nullable=True, comment="智能体状态JSON，存储智能体的内部状态"
-    )
-
-    human_feedback: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True, comment="人工反馈"
-    )
-
-    error_message: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True, comment="错误信息"
-    )
-
-    metadata_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSON, nullable=True, comment="元数据JSON，存储工作流相关配置和参数"
-    )
-
-    # 性能优化索引
-    __table_args__ = (
-        Index("ix_workflow_states_session_stage", "session_id", "current_stage"),
-        Index("ix_workflow_states_status_created", "status", "created_at"),
-        Index("ix_workflow_states_workflow_name", "workflow_name"),
-    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(255), index=True, nullable=False)
+    workflow_name = Column(String(255), nullable=False)
+    current_stage = Column(SQLEnum(WorkflowStage), nullable=False)
+    status = Column(SQLEnum(WorkflowStatus), nullable=False, default=WorkflowStatus.PENDING)
+    agent_state_json = Column(JSON, nullable=True)
+    human_feedback = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
     @property
     def agent_state(self) -> Optional[Dict[str, Any]]:
         """获取智能体状态（反序列化）"""
-        if self.agent_state_json:
-            return self.agent_state_json
-        return None
+        return self.agent_state_json
 
     @agent_state.setter
     def agent_state(self, value: Optional[Dict[str, Any]]) -> None:
         """设置智能体状态"""
         self.agent_state_json = value
-
-    @property
-    def metadata(self) -> Optional[Dict[str, Any]]:
-        """获取元数据（反序列化）"""
-        if self.metadata_json:
-            return self.metadata_json
-        return None
-
-    @metadata.setter
-    def metadata(self, value: Optional[Dict[str, Any]]) -> None:
-        """设置元数据"""
-        self.metadata_json = value
 
     def add_agent_state(self, key: str, value: Any) -> None:
         """添加智能体状态项"""
@@ -159,6 +116,41 @@ class WorkflowState(Base, TimestampMixin):
             f"<WorkflowState(id={self.id}, "
             f"session_id={self.session_id}, "
             f"workflow_name={self.workflow_name}, "
-            f"stage={self.current_stage}, "
-            f"status={self.status})>"
+            f"stage={self.current_stage.value}, "
+            f"status={self.status.value})>"
         )
+
+    def to_dict(self, exclude: Optional[list] = None) -> Dict[str, Any]:
+        """将模型实例转换为字典
+
+        Args:
+            exclude: 要排除的字段列表
+
+        Returns:
+            包含模型数据的字典
+        """
+        result = {}
+        exclude_set = set(exclude or [])
+
+        # 获取实例的所有属性，排除私有属性和方法
+        for key, value in vars(self).items():
+            if key.startswith("_"):
+                continue
+            if key in exclude_set:
+                continue
+            # 处理特殊类型
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            result[key] = value
+
+        return result
+
+    def update_from_dict(self, data: Dict[str, Any]) -> None:
+        """从字典更新模型属性
+
+        Args:
+            data: 包含更新数据的字典
+        """
+        for key, value in data.items():
+            if hasattr(self, key):
+                setattr(self, key, value)

@@ -106,3 +106,4 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .ruff_cache
+uv.lock

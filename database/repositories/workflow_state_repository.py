@@ -124,7 +124,7 @@ class WorkflowStateRepository:
                     WorkflowState.current_stage == stage,
                 )
             )
-            .order_by(WorkflowState.created_at.desc())
+            .order_by(WorkflowState.id.desc())
             .limit(1)
         )
         result = await self.session.execute(stmt)

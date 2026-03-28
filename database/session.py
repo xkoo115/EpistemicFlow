@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from core.config import settings
+from core.config import settings, Environment
 
 
 class DatabaseManager:
@@ -124,7 +124,7 @@ async def init_database() -> None:
 
     创建所有表（开发环境使用）
     """
-    from models.base import Base
+    from models.workflow_state import Base
 
     # 初始化引擎
     db_manager.init_engine()
