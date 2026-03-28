@@ -39,6 +39,7 @@ dependencies = [
     "black>=23.0.0",
     "mypy>=1.7.0",
     "ruff>=0.1.0",
+    "docker>=7.0.0",
     # Microsoft Agent Framework - 多智能体引擎
     "agent-framework>=1.0.0rc5",
 ]

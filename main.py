@@ -11,6 +11,7 @@ import uvicorn
 from core.config import settings
 from database.session import init_database, close_database, get_db_session
 from api.v1 import router as v1_router
+from api.stream import router as stream_router
 
 
 @asynccontextmanager
@@ -56,6 +57,13 @@ app.include_router(
     v1_router,
     prefix=f"{settings.app.api_prefix}/v1",
     tags=["v1"],
+)
+
+# 注册SSE流式路由
+app.include_router(
+    stream_router,
+    prefix=f"{settings.app.api_prefix}",
+    tags=["stream"],
 )
 
 
