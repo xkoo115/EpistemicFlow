@@ -1,0 +1,230 @@
+# ============================================================================
+# EpistemicFlow 生产级 Docker Compose 配置
+# 编排 FastAPI 后端、PostgreSQL 数据库和 Docker 沙箱
+# ============================================================================
+
+version: '3.8'
+
+# ============================================================================
+# 网络配置
+# ============================================================================
+# 创建自定义网络，确保服务之间可以通过服务名互相访问
+# 使用 bridge 驱动，适合单机部署场景
+networks:
+  epistemicflow-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ============================================================================
+# 数据卷配置
+# ============================================================================
+# 定义数据卷，确保数据持久化
+volumes:
+  # PostgreSQL 数据持久化卷
+  # 即使容器删除，数据库数据也不会丢失
+  postgres-data:
+    driver: local
+
+# ============================================================================
+# 服务配置
+# ============================================================================
+services:
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL 数据库服务
+  # --------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: epistemicflow-db
+
+    # 环境变量配置
+    environment:
+      # PostgreSQL 超级用户密码（生产环境应使用 secrets）
+      POSTGRES_USER: epistemicflow
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-epistemicflow_secure_password}
+      POSTGRES_DB: epistemicflow
+
+      # PostgreSQL 性能优化参数
+      # shared_buffers: 共享缓冲区大小（建议为系统内存的 25%）
+      # effective_cache_size: 有效缓存大小（建议为系统内存的 50%）
+      # maintenance_work_mem: 维护工作内存
+      # checkpoint_completion_target: 检查点完成目标
+      # wal_buffers: WAL 缓冲区大小
+      # default_statistics_target: 默认统计目标
+      # random_page_cost: 随机页面成本（SSD 设为 1.1，HDD 设为 4.0）
+      # effective_io_concurrency: 有效 IO 并发数
+      # work_mem: 工作内存（每个排序/哈希操作）
+      # min_wal_size: 最小 WAL 大小
+      # max_wal_size: 最大 WAL 大小
+      # max_worker_processes: 最大工作进程数
+      # max_parallel_workers_per_gather: 每个聚集操作的最大并行工作进程数
+      # max_parallel_workers: 最大并行工作进程数
+      # max_parallel_maintenance_workers: 最大并行维护工作进程数
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+
+    # 数据卷挂载
+    volumes:
+      # 持久化 PostgreSQL 数据
+      - postgres-data:/var/lib/postgresql/data
+
+      # 初始化 SQL 脚本（可选）
+      # - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+
+    # 端口映射
+    # 仅在开发环境暴露端口，生产环境不应暴露
+    ports:
+      - "5432:5432"
+
+    # 网络配置
+    networks:
+      - epistemicflow-network
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epistemicflow -d epistemicflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 资源限制（可选，根据实际情况调整）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # --------------------------------------------------------------------------
+  # FastAPI 后端服务
+  # --------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # 构建参数（可选）
+      args:
+        - PYTHON_VERSION=3.11
+
+    container_name: epistemicflow-api
+
+    # 环境变量配置
+    environment:
+      # 应用配置
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-["http://localhost:3000"]}
+      APP_API_PREFIX: /api
+
+      # 数据库配置（使用 PostgreSQL）
+      # 格式: postgresql+asyncpg://user:password@host:port/database
+      DB_URL: postgresql+asyncpg://epistemicflow:${DB_PASSWORD:-epistemicflow_secure_password}@db:5432/epistemicflow
+      DB_ECHO: ${DB_ECHO:-false}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+
+      # 大模型配置（从环境变量或 .env 文件读取）
+      # 示例: LLM_GPT4__PROVIDER=openai
+      # 示例: LLM_GPT4__API_KEY=your-api-key
+      DEFAULT_LLM: ${DEFAULT_LLM:-gpt4}
+      WORKFLOW_TIMEOUT: ${WORKFLOW_TIMEOUT:-3600}
+      CHECKPOINT_INTERVAL: ${CHECKPOINT_INTERVAL:-60}
+
+      # 日志配置
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # Docker 配置（用于 Docker out of Docker）
+      # DOCKER_HOST: unix:///var/run/docker.sock
+
+    # 数据卷挂载
+    volumes:
+      # ============================================================================
+      # Docker Socket 挂载（核心配置）
+      # ============================================================================
+      # 挂载宿主机的 Docker socket 到容器内，实现 Docker out of Docker（DooD）
+      #
+      # 为什么需要这样配置？
+      # 1. FastAPI 服务需要动态创建和管理 Docker 沙箱容器
+      # 2. 每个智能体执行代码时，都会启动一个隔离的 Python 容器
+      # 3. 通过挂载 /var/run/docker.sock，容器内的 docker CLI 可以直接控制宿主机的 Docker 守护进程
+      #
+      # 安全性考量：
+      # 1. 容器内的进程拥有对宿主机 Docker 守护进程的完全控制权
+      # 2. 恶意代码可能通过 Docker socket 访问宿主机资源
+      # 3. 生产环境应考虑以下安全措施：
+      #    - 使用 Docker Rootless 模式
+      #    - 限制容器权限（user namespaces）
+      #    - 使用 Docker Context 或 Docker-in-Docker（DinD）隔离
+      #    - 实施网络隔离和资源限制
+      #    - 定期审计 Docker 访问日志
+      #
+      # 权限配置：
+      # 1. 确保 /var/run/docker.sock 的权限为 660 或更严格
+      # 2. 容器内的用户需要有权限访问 docker.sock
+      # 3. 在 Dockerfile 中已创建非 root 用户，需要将其添加到 docker 组
+      # ============================================================================
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      # 应用数据持久化
+      # 存储沙箱执行结果、日志文件等
+      - ./storage:/app/storage
+
+      # 日志目录挂载（可选，用于集中日志管理）
+      - ./logs:/app/logs
+
+    # 端口映射
+    ports:
+      - "8000:8000"
+
+    # 网络配置
+    networks:
+      - epistemicflow-network
+
+    # 依赖关系
+    # 确保 PostgreSQL 数据库先启动并健康
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 资源限制（根据实际情况调整）
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 额外的 Docker 配置
+    # privileged: true  # 如果需要更多权限（不推荐）
+    # cap_add:
+    #   - SYS_ADMIN  # 添加系统管理能力（谨慎使用）
