@@ -1,0 +1,108 @@
+# ==========================================
+# 1. Python 基础与编译文件
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================================
+# 2. 虚拟环境 (Virtual Environments)
+# ==========================================
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# 3. 环境变量与敏感凭证 (极其重要！！！)
+# ==========================================
+# 绝对不能把包含 OpenAI API Key 等真实密钥的文件传上 Git
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.pem
+# 注：建议在代码仓保留一个 .env.example 作为模板（里面写假数据）
+
+# ==========================================
+# 4. 数据库与持久化状态文件
+# ==========================================
+# 我们在第一阶段会用到 SQLite 作为本地状态机存储
+*.db
+*.sqlite3
+*.sqlite
+# 如果后期用 Alembic 做数据库迁移，可能会产生一些本地临时文件
+alembic.ini.bak
+
+# ==========================================
+# 5. 测试、覆盖率与日志文件
+# ==========================================
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.log
+logs/
+test-results/
+
+# ==========================================
+# 6. AutoGen 与 AI 代理专属临时文件 (远期考虑)
+# ==========================================
+# AutoGen 默认会在这里缓存 LLM 的响应，以节省 Token
+.cache/
+# 代理执行代码的默认沙箱/工作区目录
+coding/
+workspace/
+autogen_workspace/
+# 生成的图表、中间论文草稿等输出文件
+output/
+generated_data/
+
+# ==========================================
+# 7. IDE 与编辑器配置文件
+# ==========================================
+# VS Code
+.vscode/
+*.code-workspace
+# PyCharm / IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ==========================================
+# 8. 操作系统自动生成的临时文件
+# ==========================================
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.ruff_cache
