@@ -102,7 +102,18 @@ async def test_db_manager(test_settings: Settings):
 async def db_session(test_db_manager):
     """数据库会话fixture"""
     async for session in test_db_manager.get_session():
+        # 在测试开始前清理所有数据
+        from models.workflow_state import WorkflowState
+        from sqlalchemy import delete
+        
+        await session.execute(delete(WorkflowState))
+        await session.commit()
+        
         yield session
+        
+        # 在测试结束后清理所有数据
+        await session.execute(delete(WorkflowState))
+        await session.commit()
 
 
 @pytest.fixture

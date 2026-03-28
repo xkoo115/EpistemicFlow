@@ -14,7 +14,8 @@ from sqlalchemy.orm import declarative_base
 from .base import BaseModel
 
 
-Base = declarative_base()
+# 创建 SQLAlchemy Base
+Base = declarative_base(cls=BaseModel)
 
 
 class WorkflowStage(str, Enum):

@@ -58,7 +58,7 @@ class WorkflowStateRepository:
         )
 
         self.session.add(workflow_state)
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(workflow_state)
 
         return workflow_state
