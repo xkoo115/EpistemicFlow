@@ -30,10 +30,12 @@ describe('MainCanvas', () => {
   it('应该显示视图模式切换按钮', () => {
     render(<MainCanvas />)
 
-    // 验证三个视图模式按钮
-    expect(screen.getByRole('button', { name: '预览' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '编辑' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '对比' })).toBeInTheDocument()
+    // 验证三个视图模式按钮文本
+    const buttons = screen.getAllByRole('button')
+    expect(buttons).toHaveLength(3)
+    expect(buttons[0]).toHaveTextContent('预览')
+    expect(buttons[1]).toHaveTextContent('编辑')
+    expect(buttons[2]).toHaveTextContent('对比')
   })
 
   it('应该显示功能卡片', () => {

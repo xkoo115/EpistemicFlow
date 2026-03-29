@@ -9,23 +9,31 @@ import WorkbenchLayout from '@/layouts/WorkbenchLayout'
 
 describe('WorkbenchLayout', () => {
   it('应该正确挂载并渲染布局容器', () => {
-    render(<WorkbenchLayout />)
+    const { container } = render(<WorkbenchLayout />)
 
     // 验证布局容器存在
-    const layout = screen.getByRole('main').parentElement
+    const layout = container.firstChild as HTMLElement
     expect(layout).toBeInTheDocument()
+    expect(layout.tagName.toLowerCase()).toBe('div')
   })
 
   it('应该渲染三个栏位(左、中、右)', () => {
-    render(<WorkbenchLayout />)
+    const { container } = render(<WorkbenchLayout />)
 
-    // 验证主工作区存在
-    const mainCanvas = screen.getByRole('main')
-    expect(mainCanvas).toBeInTheDocument()
+    // 验证根容器存在
+    const layout = container.firstChild as HTMLElement
+    expect(layout).toBeInTheDocument()
 
-    // 验证左右两个侧栏存在
-    const sidebars = screen.getAllByRole('complementary')
-    expect(sidebars).toHaveLength(2) // 左右两个 aside
+    // 验证有三个子元素 (左栏、中栏、右栏)
+    const children = Array.from(layout.children)
+    expect(children).toHaveLength(3)
+
+    // 验证第一个和第三个是 aside 元素
+    expect(children[0].tagName.toLowerCase()).toBe('aside')
+    expect(children[2].tagName.toLowerCase()).toBe('aside')
+
+    // 验证中间是 main 元素
+    expect(children[1].tagName.toLowerCase()).toBe('main')
   })
 
   it('应该正确渲染传入的子组件', () => {
