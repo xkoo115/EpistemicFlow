@@ -1,0 +1,118 @@
+/* Tailwind CSS 基础指令 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   EpistemicFlow 全局样式配置
+   深邃暗黑主题 - 玻璃盒工作台
+   ======================================== */
+
+/* 基础层 - 全局重置和默认样式 */
+@layer base {
+  /* 强制全局使用暗黑模式 */
+  :root {
+    color-scheme: dark;
+  }
+
+  /* 根容器 - 全屏布局基础 */
+  #root {
+    @apply w-full h-screen overflow-hidden;
+  }
+
+  /* 全局字体和背景设置 */
+  body {
+    @apply bg-dark-bg-primary text-gray-100 font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    font-variation-settings: 'opsz' 32;
+  }
+
+  /* 自定义滚动条样式 - 极客风格 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-border-light;
+  }
+
+  /* 选中文本样式 */
+  ::selection {
+    @apply bg-accent-cyan-500/30 text-white;
+  }
+}
+
+/* 组件层 - 可复用的组件样式 */
+@layer components {
+  /* 玻璃态效果 - 用于面板和卡片 */
+  .glass-panel {
+    @apply bg-dark-bg-secondary/80 backdrop-blur-xl border border-dark-border rounded-lg;
+  }
+
+  /* 状态指示器基础样式 */
+  .status-indicator {
+    @apply w-2 h-2 rounded-full animate-pulse;
+  }
+
+  /* 计算中状态 - 青色 */
+  .status-computing {
+    @apply bg-accent-cyan-500 shadow-[0_0_8px_rgba(0,217,255,0.6)];
+  }
+
+  /* HITL 挂起状态 - 琥珀色 */
+  .status-suspended {
+    @apply bg-accent-amber-500 shadow-[0_0_8px_rgba(255,184,0,0.6)];
+  }
+
+  /* 沙箱报错状态 - 红色 */
+  .status-error {
+    @apply bg-accent-red-500 shadow-[0_0_8px_rgba(255,59,59,0.6)];
+  }
+
+  /* 节点通过状态 - 绿色 */
+  .status-success {
+    @apply bg-accent-green-500 shadow-[0_0_8px_rgba(0,255,136,0.6)];
+  }
+
+  /* 终端日志样式 */
+  .terminal-text {
+    @apply font-mono text-sm text-gray-300 leading-relaxed;
+  }
+
+  /* 面板标题样式 */
+  .panel-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2;
+  }
+}
+
+/* 工具层 - 实用工具类 */
+@layer utilities {
+  /* 文字渐变效果 */
+  .text-gradient-cyan {
+    @apply bg-gradient-to-r from-accent-cyan-400 to-accent-cyan-600 bg-clip-text text-transparent;
+  }
+
+  /* 发光边框效果 */
+  .border-glow-cyan {
+    @apply border border-accent-cyan-500/50 shadow-[0_0_10px_rgba(0,217,255,0.3)];
+  }
+
+  /* 隐藏滚动条但保持滚动功能 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
