@@ -8,7 +8,7 @@
  * - 可以手动触发特定类型的日志
  */
 
-import { LogLevel, LogSource, LogData } from '@/types/log'
+import { LogLevel, LogSource, type LogData } from '@/types/log'
 
 /**
  * Mock SSE 配置选项

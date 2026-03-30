@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useSSEStream } from '@/hooks/useSSEStream'
 import { MockEventSource, createMockSSE } from './mocks/mockSSEStream'
-import { LogLevel, LogSource, LogData } from '@/types/log'
+import { LogLevel, LogSource, type LogData } from '@/types/log'
 
 // Mock EventSource
 global.EventSource = MockEventSource as any

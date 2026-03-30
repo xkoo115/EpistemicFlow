@@ -91,6 +91,30 @@ class WorkflowStatistics(BaseModel):
 router = APIRouter()
 
 
+def workflow_state_to_response(workflow_state) -> WorkflowStateResponse:
+    """将工作流状态模型转换为响应模型
+
+    Args:
+        workflow_state: 工作流状态数据库模型
+
+    Returns:
+        WorkflowStateResponse: API响应模型
+    """
+    return WorkflowStateResponse(
+        id=workflow_state.id,
+        session_id=workflow_state.session_id,
+        workflow_name=workflow_state.workflow_name,
+        current_stage=workflow_state.current_stage,
+        status=workflow_state.status,
+        agent_state=workflow_state.agent_state_json,
+        human_feedback=workflow_state.human_feedback,
+        error_message=workflow_state.error_message,
+        metadata=workflow_state.metadata_json if workflow_state.metadata_json else {},
+        created_at=workflow_state.created_at.isoformat() if workflow_state.created_at else "",
+        updated_at=workflow_state.updated_at.isoformat() if workflow_state.updated_at else "",
+    )
+
+
 @router.post("/", response_model=WorkflowStateResponse)
 async def create_workflow_state(
     workflow_data: WorkflowStateCreate,
@@ -118,7 +142,7 @@ async def create_workflow_state(
             metadata=workflow_data.metadata,
         )
 
-        return WorkflowStateResponse.from_orm(workflow_state)
+        return workflow_state_to_response(workflow_state)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建工作流状态失败: {str(e)}")
 
@@ -228,7 +252,7 @@ async def update_workflow_state(
 
         # 获取更新后的记录
         updated_state = await repository.get_by_id(state_id)
-        return WorkflowStateResponse.from_orm(updated_state)
+        return workflow_state_to_response(updated_state)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新工作流状态失败: {str(e)}")

@@ -260,7 +260,7 @@ describe('WorkflowCanvas', () => {
 
     // 验证请求参数
     const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toBe(`/api/workflows/${defaultSessionId}/resume`);
+    expect(url).toBe(`/api/v1/workflows/${defaultSessionId}/resume`);
     expect(options.method).toBe('POST');
     expect(options.headers['Content-Type']).toBe('application/json');
 

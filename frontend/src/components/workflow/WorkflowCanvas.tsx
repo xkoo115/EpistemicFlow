@@ -44,9 +44,9 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
       try {
         console.log('恢复工作流 - 请求载荷:', payload);
 
-        // 模拟调用后端 POST /workflows/{session_id}/resume 接口
+        // 模拟调用后端 POST /v1/workflows/{session_id}/resume 接口
         const response = await fetch(
-          `/api/workflows/${sessionId}/resume`,
+          `/api/v1/workflows/${sessionId}/resume`,
           {
             method: 'POST',
             headers: {

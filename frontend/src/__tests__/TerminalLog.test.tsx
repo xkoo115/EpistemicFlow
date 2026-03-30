@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { TerminalLog } from '@/components/workbench/TerminalLog'
-import { LogLevel, LogSource, LogData } from '@/types/log'
+import { LogLevel, LogSource, type LogData } from '@/types/log'
 import { MockEventSource, createMockSSE } from './mocks/mockSSEStream'
 
 // Mock EventSource

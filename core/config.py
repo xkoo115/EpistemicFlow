@@ -79,7 +79,7 @@ class AppConfig(BaseSettings):
     host: str = Field("0.0.0.0", description="服务监听地址")
     port: int = Field(8000, description="服务监听端口")
     cors_origins: List[str] = Field(
-        ["http://localhost:3000"], description="CORS允许的源"
+        ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"], description="CORS允许的源"
     )
     api_prefix: str = Field("/api", description="API前缀")
 

@@ -16,7 +16,7 @@
 import React, { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { X, Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { SagaCheckpoint } from '@/types/saga'
+import type { SagaCheckpoint } from '@/types/saga'
 
 /**
  * RollbackModal 组件属性接口

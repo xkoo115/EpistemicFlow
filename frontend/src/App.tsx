@@ -3,25 +3,19 @@
  * 集成三栏式工作台布局
  */
 
+import React from 'react'
 import WorkbenchLayout from '@/layouts/WorkbenchLayout'
-import AgentRoster from '@/components/workbench/AgentRoster'
+import AgentSidebar from '@/components/workbench/AgentSidebar'
 import MainCanvas from '@/components/workbench/MainCanvas'
-import ActivityLog from '@/components/workbench/ActivityLog'
-import WorkflowCanvasDemo from '@/examples/WorkflowCanvasDemo'
+import TerminalLog from '@/components/workbench/TerminalLog'
 
 function App() {
-  // 切换到演示模式
-  const DEMO_MODE = true
-
-  if (DEMO_MODE) {
-    return <WorkflowCanvasDemo />
-  }
-
+  // 生产模式：显示完整的三栏式工作台界面
   return (
     <WorkbenchLayout
-      leftSidebar={<AgentRoster />}
+      leftSidebar={<AgentSidebar />}
       mainCanvas={<MainCanvas />}
-      rightSidebar={<ActivityLog />}
+      rightSidebar={<TerminalLog />}
     />
   )
 }

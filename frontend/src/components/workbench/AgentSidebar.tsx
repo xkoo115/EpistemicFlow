@@ -17,24 +17,26 @@ import { cn } from '@/lib/utils'
 import { Bot, Network, Clock, Activity } from 'lucide-react'
 import {
   ReactFlow,
-  Node,
-  Edge,
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+} from '@xyflow/react'
+import type {
+  Node,
+  Edge,
   NodeMouseHandler,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 // 导入类型定义
-import {
+import type {
   Agent,
-  AgentStatus,
   SagaCheckpoint,
   SagaNodeData,
 } from '@/types/saga'
+import { AgentStatus } from '@/types/saga'
 
 // 导入回滚模态框组件
 import { RollbackModal } from './RollbackModal'

@@ -12,7 +12,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Terminal, Filter, Download, Trash2, Search, X, RefreshCw } from 'lucide-react'
-import { useSSEStream, type SSEMessage } from '@/hooks/useSSEStream'
+import { useSSEStream } from '@/hooks/useSSEStream'
+import type { SSEMessage } from '@/types/log'
 import {
   parseSSEMessageToLogEntry,
   formatTimestamp,
@@ -42,7 +43,7 @@ export interface TerminalLogProps {
  * TerminalLog 组件
  */
 export const TerminalLog: React.FC<TerminalLogProps> = ({
-  endpoint = '/api/stream',
+  endpoint = '/api/stream/events/default',
   className,
   maxLogEntries = 1000,
   showToolbar = true,

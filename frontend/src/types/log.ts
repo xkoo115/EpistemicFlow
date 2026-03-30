@@ -77,3 +77,19 @@ export interface LogFilter {
   /** 智能体 ID 过滤 */
   agentId?: string
 }
+
+/**
+ * SSE 消息类型
+ */
+export interface SSEMessage {
+  /** 消息 ID */
+  id?: string
+  /** 消息事件类型 */
+  event?: string
+  /** 消息数据 */
+  data: unknown
+  /** 原始数据字符串 */
+  rawData?: string
+  /** 时间戳 */
+  timestamp: number
+}
