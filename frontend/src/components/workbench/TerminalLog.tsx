@@ -219,7 +219,7 @@ export const TerminalLog: React.FC<TerminalLogProps> = ({
   }, [filteredEntries])
 
   return (
-    <div className={cn('h-full flex flex-col', className)}>
+    <div className={cn('h-full flex flex-col', className)} data-testid="terminal-log">
       {/* 面板标题和工具栏 */}
       {showToolbar && (
         <div className="flex items-center justify-between mb-3">
@@ -416,7 +416,7 @@ export const TerminalLog: React.FC<TerminalLogProps> = ({
 
       {/* 底部状态栏 */}
       <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="terminal-log-status">
           <div
             className={cn(
               'w-2 h-2 rounded-full',

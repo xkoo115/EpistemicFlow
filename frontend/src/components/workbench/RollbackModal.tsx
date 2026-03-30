@@ -110,6 +110,7 @@ export const RollbackModal: React.FC<RollbackModalProps> = ({
           'animate-in fade-in zoom-in-95 duration-200'
         )}
         onKeyDown={handleKeyDown}
+        data-testid="rollback-modal"
       >
         {/* 头部 */}
         <div className="flex items-center justify-between p-4 border-b border-dark-border">

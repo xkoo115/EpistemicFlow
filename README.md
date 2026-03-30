@@ -28,6 +28,7 @@
 | 🔄 **Saga 状态机制** | 支持工作流状态的安全回滚，具有强大的系统容错及状态管理能力 |
 | 🐳 **Docker 沙箱执行引擎** | 提供安全隔离的代码执行环境（如实验数据分析、代码运行评估） |
 | 🎨 **现代化前端界面** | React + TypeScript + Tailwind CSS，利用 SSE 实现实时事件推送 |
+| 🚀 **一键启动** | 开箱即用，只需配置 API Key 即可启动完整系统 |
 
 ---
 
@@ -44,7 +45,7 @@ AI 引擎: Microsoft Agent Framework
 ORM: SQLAlchemy 2.0 (异步) + Alembic
 沙箱隔离: Docker SDK
 配置管理: Pydantic Settings
-测试: pytest
+测试: pytest + Playwright E2E
 队列任务: Celery/Redis (可选)
 ```
 
@@ -53,224 +54,283 @@ ORM: SQLAlchemy 2.0 (异步) + Alembic
 ```yaml
 核心框架: React 19.2.4
 开发语言: TypeScript 5.9.3
-构建工具: Vite 8.0.3
+构建工具: Vite 8.0.1
 样式框架: Tailwind CSS 3.4.19
-样式处理: PostCSS 8.5.8 + Autoprefixer 10.4.27
+流程可视化: React Flow (@xyflow/react)
 通信方式: REST API + SSE (Server-Sent Events)
+E2E 测试: Playwright
 ```
 
 ---
 
-## 🚀 快速开始
+## 🚀 快速开始（一键启动）
 
-### 1️⃣ 环境准备
-
-确保您的系统已安装以下环境与依赖：
+### 📋 环境要求
 
 | 依赖 | 版本要求 | 用途 |
 |------|----------|------|
-| 🔵 **Python** | >= 3.11 | 后端运行环境 |
-| 🟢 **Node.js** | 最新 LTS 版本 | 前端构建和运行 |
-| 🐳 **Docker** | 最新稳定版 | 沙箱容器隔离 |
-| 🐳 **Docker Compose** | 最新稳定版 | 容器编排管理 |
-| 🔧 **Make** | 可选 | 快捷命令执行 |
+| 🔵 **Python** | >= 3.10 | 后端运行环境 |
+| 🟢 **Node.js** | >= 18.0 | 前端构建和运行 |
+| 🐳 **Docker** | 最新稳定版 (可选) | 沙箱容器隔离 |
 
-### 2️⃣ 获取代码与配置服务
+### ⚡ 一键启动步骤
 
-克隆项目到本地，并基于提供模板配置环境变量：
+#### 步骤 1: 获取代码
 
 ```bash
 git clone <repository-url>
 cd EpistemicFlow
-
-# 从预设的环境变量模板创建自己的配置
-cp .env.example .env
 ```
 
-在 `.env` 中按需填入密钥和模型服务信息：
+#### 步骤 2: 配置 API Key
 
+**Windows:**
+```bash
+# 复制配置模板
+copy .env.template .env
+
+# 编辑配置文件，填入您的 API Key
+notepad .env
+```
+
+**Linux/macOS:**
+```bash
+# 复制配置模板
+cp .env.template .env
+
+# 编辑配置文件，填入您的 API Key
+nano .env  # 或使用您喜欢的编辑器
+```
+
+**必需配置项:**
 ```env
-# 核心大模型配置
-LLM_GPT4__PROVIDER=openai
-LLM_GPT4__API_KEY=your-openai-api-key
+# DeepSeek 配置 (推荐，性价比高)
+LLM_DEEPSEEK__API_KEY=your-api-key-here
+LLM_DEEPSEEK__BASE_URL=https://api.deepseek.com
+DEFAULT_LLM=deepseek
 
-# OLLAMA 本地模型配置示例
-LLM_OLLAMA__PROVIDER=ollama
-LLM_OLLAMA__MODEL_NAME=llama2
-LLM_OLLAMA__BASE_URL=http://localhost:11434
-
-# 数据库配置（默认使用本地 SQLite）
-DB_URL=sqlite+aiosqlite:///./epistemicflow.db
+# 或使用 OpenAI
+# LLM_GPT4__API_KEY=your-openai-api-key
+# DEFAULT_LLM=gpt4
 ```
 
-### 3️⃣ 一键启动 (推荐)
+#### 步骤 3: 一键启动
 
-项目预置了 `Makefile` 提供便捷的全生命周期管理操作：
-
+**Windows:**
 ```bash
-# 自动安装依赖 + 构建镜像 + 启动后端服务及数据库 + 执行数据库迁移
-make quickstart
+# 双击运行 start.bat 或在命令行执行:
+start.bat
 ```
 
-> 💡 **提示**: 如果不想使用 Make，也可通过 Docker Compose 直接拉起容器编排：
-> ```bash
-> docker-compose up -d
-> ```
-
-### 4️⃣ 手动分离式本地启动
-
-#### 📋 前置依赖安装
-
-**后端依赖：**
+**Linux/macOS:**
 ```bash
-# 创建并激活虚拟环境 (以下为 Windows 示例，Linux/Mac 建议用 source .venv/bin/activate)
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
+# 添加执行权限
+chmod +x start.sh
 
-# 安装后端依赖
-pip install -r requirements.txt
+# 运行启动脚本
+./start.sh
 ```
 
-**前端依赖：**
-```bash
-cd frontend
-npm install
-# 核心依赖包括：
-# - React 19.2.4
-# - TypeScript 5.9.3
-# - Vite 8.0.3
-# - Tailwind CSS 3.4.19
-# - Autoprefixer 10.4.27
-# - PostCSS 8.5.8
-cd ..
-```
+#### 步骤 4: 访问应用
 
-#### 🚀 启动后端应用
+启动成功后，浏览器会自动打开，或手动访问：
 
-```bash
-# 激活虚拟环境
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-# 初始化数据库
-python scripts/init.py
-
-# 启动 FastAPI 服务
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-后端启动成功后，您会看到类似输出：
-```
-INFO:     Will watch for changes in these directories: ['D:\\EpistemicFlow']
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [xxxx] using WatchFiles
-INFO:     Started server process [xxxx]
-INFO:     Waiting for application startup.
-初始化数据库...
-数据库表创建完成
-INFO:     Application startup complete.
-```
-
-#### 🎨 启动前端应用
-
-```bash
-cd frontend
-npm run dev -- --host
-```
-
-前端启动成功后，您会看到类似输出：
-```
-VITE v8.0.3  ready in xxx ms
-➜  Local:   http://localhost:5173/
-➜  Network: http://172.18.0.1:5173/
-➜  Network: http://192.168.1.3:5173/
-```
-
-#### 🌐 访问应用
-
-- **前端界面**: http://localhost:5173/
+- **前端界面**: http://localhost:5173
 - **后端 API 文档**: http://localhost:8000/docs
-- **后端 ReDoc**: http://localhost:8000/redoc
+- **ReDoc**: http://localhost:8000/redoc
 
-#### 🔧 常见问题解决
+### 🛑 停止服务
 
-**问题 1: 前端显示 "Cannot find module 'tailwindcss'"**
+**Windows:**
 ```bash
-cd frontend
-npm install -D tailwindcss@^3.4.0 postcss autoprefixer
+stop.bat
 ```
 
-**问题 2: TypeScript 编译错误 "erasableSyntaxOnly"**
-- 已在 `tsconfig.app.json` 中移除此选项
-- 如仍有问题，确保 TypeScript 版本为 5.9.3 或更高
-
-**问题 3: 端口被占用**
+**Linux/macOS:**
 ```bash
-# Windows
-netstat -ano | findstr :8000
-taskkill /PID <进程ID> /F
-
-# Linux/Mac
-lsof -ti:8000 | xargs kill -9
+./stop.sh
 ```
 
 ---
 
-## 📖 如何使用
+## 🔧 支持的大模型
+
+| 模型 | 配置前缀 | 获取 API Key |
+|------|----------|--------------|
+| **DeepSeek** (推荐) | `LLM_DEEPSEEK__` | https://platform.deepseek.com/ |
+| **OpenAI GPT-4** | `LLM_GPT4__` | https://platform.openai.com/ |
+| **Anthropic Claude** | `LLM_CLAUDE__` | https://console.anthropic.com/ |
+| **Ollama** (本地免费) | `LLM_OLLAMA__` | https://ollama.ai/ |
+
+### 配置示例
+
+**DeepSeek (推荐):**
+```env
+LLM_DEEPSEEK__PROVIDER=deepseek
+LLM_DEEPSEEK__API_KEY=sk-xxxxx
+LLM_DEEPSEEK__BASE_URL=https://api.deepseek.com
+LLM_DEEPSEEK__MODEL_NAME=deepseek-chat
+DEFAULT_LLM=deepseek
+```
+
+**OpenAI GPT-4:**
+```env
+LLM_GPT4__PROVIDER=openai
+LLM_GPT4__API_KEY=sk-xxxxx
+LLM_GPT4__BASE_URL=https://api.openai.com/v1
+LLM_GPT4__MODEL_NAME=gpt-4-turbo-preview
+DEFAULT_LLM=gpt4
+```
+
+**Ollama (本地):**
+```env
+# 先安装 Ollama 并拉取模型: ollama pull llama2
+LLM_OLLAMA__PROVIDER=ollama
+LLM_OLLAMA__BASE_URL=http://localhost:11434
+LLM_OLLAMA__MODEL_NAME=llama2
+DEFAULT_LLM=ollama
+```
+
+---
+
+## 🧪 测试
+
+### E2E 测试 (Playwright)
+
+```bash
+cd frontend
+
+# 运行所有 E2E 测试
+npm run e2e
+
+# UI 模式调试
+npm run e2e:ui
+
+# 显示浏览器运行
+npm run e2e:headed
+
+# 查看测试报告
+npm run e2e:report
+```
+
+### 单元测试 (Vitest)
+
+```bash
+cd frontend
+
+# 运行单元测试
+npm run test
+
+# UI 模式
+npm run test:ui
+```
+
+### 后端测试 (pytest)
+
+```bash
+# 激活虚拟环境后
+pytest
+
+# 带覆盖率
+pytest --cov=.
+```
+
+---
+
+## 📖 使用指南
 
 ### 🎯 前端工作台界面
 
-### 前端工作台界面
-在浏览器中打开配置的前端服务 (默认 `http://localhost:5173/`)。平台将呈现三大核心板块：
-- **AgentRoster (智能体列表)**: 查看、监控、及管理当前配置并激活的所有辅助智能体。
-- **MainCanvas (主画布)**: 进行主要的流程交互，如发起构思意图输入，或者审核智能体生成的草案。
-- **ActivityLog (活动日志)**: 通过后台 SSE 推送，实时记录并展示智能体执行细节 (例如 Agent Thought)、工具调用结果及沙箱中直接返回的内容输出。
+在浏览器中打开前端界面 (默认 `http://localhost:5173/`)，平台呈现三大核心板块：
 
-### 🔄 工作流控制与人员介入 (HITL)
-当系统处于关键决策节点（如科研构思完成后需用户确认，或遇到错误需调整）：
-1. 流程会自动暂停并挂起。
-2. 用户可在前端主画布审批当前的阶段性成果，或提供修改建议以改变其执行方向。
-3. 若对某个阶段结果不满意，或系统提示不合格，可通过 Saga 的回滚接口直接退回到最近一次有效的检查点，从新规划执行。
-*(若需通过 API 命令完成以上操作，可参阅 `docs/HITL_SAGA_USAGE.md` 进行高级控制)*
+- **AgentSidebar (智能体侧边栏)**: 查看智能体状态和 Saga 时间旅行树
+- **WorkflowCanvas (主画布)**: 工作流执行和 HITL 干预界面
+- **TerminalLog (活动日志)**: 通过 SSE 实时推送的智能体执行日志
+
+### 🔄 HITL 人工干预流程
+
+当系统处于关键决策节点时：
+
+1. 工作流自动暂停，状态变为 `WAITING_FOR_HUMAN`
+2. 主画布切换到 **干预仪表板**，显示 Diff 视图和结构化表单
+3. 用户审核内容，填写修改建议
+4. 点击"继续执行"，工作流恢复运行
+
+### ⏪ Saga 时间旅行
+
+在左侧 Saga 树中：
+
+1. 点击任意历史节点
+2. 在弹出的回滚模态框中输入纠偏指令
+3. 系统从该检查点创建新分支继续执行
 
 ---
 
-## 📡 API 接口查询与联调
+## 📡 API 接口
 
-后端启动后，可以直接访问以下自带的交互式接口文档环境：
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### 🔌 常用核心 API 路由
+### 核心路由
 
 | 方法 | 路由 | 描述 |
 |------|------|------|
-| POST | `/api/v1/workflows/` | 创建新的科研工作流 |
-| GET | `/api/v1/workflows/{state_id}` | 查询工作流当下执行状态 |
-| POST | `/api/v1/workflows/{state_id}/interrupt` | 触发人工强行中断 (HITL) |
-| POST | `/api/v1/workflows/session/{session_id}/resume` | 提供反馈并恢复被中断的工作流 |
-| POST | `/api/v1/workflows/session/{session_id}/rollback` | Saga 状态回滚处理 |
-| GET | `/api/stream/events/{session_id}` | 建立 SSE 连接，接收系统级别实时推送 |
-- `POST /api/v1/workflows/` — 创建新的科研工作流
-- `GET /api/v1/workflows/{state_id}` — 查询工作流当下执行状态
-- `POST /api/v1/workflows/{state_id}/interrupt` — 触发人工强行中断 (HITL)
-- `POST /api/v1/workflows/session/{session_id}/resume` — 提供反馈并恢复被中断的工作流
-- `POST /api/v1/workflows/session/{session_id}/rollback` — Saga 状态回滚处理
-- `GET /api/stream/events/{session_id}` — 建立 SSE 连接，接收系统级别实时推送
+| POST | `/api/v1/workflow/` | 创建工作流 |
+| GET | `/api/v1/workflow/{state_id}` | 查询工作流状态 |
+| POST | `/api/v1/workflow/{state_id}/interrupt` | 触发 HITL 中断 |
+| POST | `/api/v1/workflow/session/{session_id}/resume` | 恢复工作流 |
+| POST | `/api/v1/workflow/session/{session_id}/rollback` | Saga 回滚 |
+| GET | `/api/stream/events/{session_id}` | SSE 事件流 |
+
+### SSE 事件类型
+
+| 事件类型 | 描述 |
+|----------|------|
+| `agent_thought` | 智能体思考过程 |
+| `tool_call_start` | 工具调用开始 |
+| `tool_call_result` | 工具调用结果 |
+| `sandbox_stdout` | 沙箱标准输出 |
+| `workflow_stage_change` | 工作流阶段变更 |
+| `hitl_interrupt` | HITL 中断事件 |
+| `heartbeat` | 心跳 |
 
 ---
 
-## 📂 获取更多文档
+## 📂 项目结构
 
-项目中已内置了不同模块和演进阶段的专属文档：
+```
+EpistemicFlow/
+├── main.py                    # FastAPI 入口
+├── .env                       # 环境配置 (需创建)
+├── .env.template              # 配置模板
+├── start.bat / start.sh       # 一键启动脚本
+├── stop.bat / stop.sh         # 停止脚本
+├── api/                       # API 路由
+│   ├── v1/                    # REST API
+│   └── stream.py              # SSE 流式路由
+├── agents/                    # 智能体模块
+├── core/                      # 核心模块
+│   ├── config.py              # 配置管理
+│   ├── state_manager.py       # 状态管理
+│   └── interrupt_event.py     # HITL 中断
+├── database/                  # 数据库层
+├── models/                    # 数据模型
+├── frontend/                  # React 前端
+│   ├── src/
+│   │   ├── components/        # 组件
+│   │   ├── hooks/             # 自定义 Hooks
+│   │   └── types/             # TypeScript 类型
+│   ├── e2e/                   # E2E 测试
+│   └── playwright.config.ts   # Playwright 配置
+└── tests/                     # 后端测试
+```
+
+---
+
+## 📚 更多文档
 
 | 文档 | 描述 |
 |------|------|
-| 📘 **API_DOCUMENTATION.md** | 详尽且包含 Request / Response Demo 的 API 接口定义 |
-| 📗 **docs/HITL_SAGA_USAGE.md** | 人工干预与状态回滚高级用法说明 |
-| 📙 **docs/QUICKSTART_PHASE4.md** | 第四阶段测试（包含 Docker 沙箱、VLM 验证）的独立快速入门指北 |
-| 📕 **frontend/README.md** | 前端工作指引及进一步开发明细 |
+| 📘 [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | 详细的 API 接口定义 |
+| 📗 [frontend/README.md](frontend/README.md) | 前端开发指南 |
+| 📙 [.vscode/launch.json](.vscode/launch.json) | VS Code 调试配置 |
 
 ---
 
@@ -281,20 +341,20 @@ lsof -ti:8000 | xargs kill -9
 | 🏗️ **阶段一** | ✅ 已完成 | FastAPI 脚手架、架构搭建、数据库初始化 |
 | 🤖 **阶段二** | ✅ 已完成 | 构思、研究等多角色智能体核心与 Map-Reduce 架构定义 |
 | 👥 **阶段三** | ✅ 已完成 | HITL 人工干预设计、Saga 状态容错执行与回滚 |
-| 🐳 **阶段四** | ✅ 已完成 | Docker 安全沙箱代码执行引擎、VLM 图表审查及同行打分评审 |
-| 📝 **阶段五** | 🚧 进行中 | 论文撰写及评审流程进一步闭环优化 |
-| 🎨 **阶段六** | 📋 计划中 | 前端可视化、多画布面板与用户交互的深入完善 |
+| 🐳 **阶段四** | ✅ 已完成 | Docker 安全沙箱代码执行引擎、VLM 图表审查 |
+| 🧪 **阶段五** | ✅ 已完成 | E2E 测试环境、一键启动脚本 |
+| 📝 **阶段六** | 🚧 进行中 | 论文撰写及评审流程进一步闭环优化 |
 
 ---
 
 ## 🤝 贡献与支持
 
-我们欢迎任何形式的贡献！如果您想为项目做出贡献，请遵循以下步骤：
+我们欢迎任何形式的贡献！
 
 1. 🍴 **Fork** 项目代码仓
-2. 🌿 **创建分支** - 建立属于您的 Feature 或 Bugfix 分支
+2. 🌿 **创建分支** - 建立您的 Feature 或 Bugfix 分支
 3. 💾 **提交变更** - 提交相关的变更、测试及更新记录
-4. 📤 **推送代码** - 推送到远程分支并发起 Pull Request (PR) 申请合并
+4. 📤 **推送代码** - 推送到远程分支并发起 Pull Request
 
 ---
 
@@ -311,7 +371,3 @@ lsof -ti:8000 | xargs kill -9
 Made with ❤️ by EpistemicFlow Team
 
 </div>
-
-## 📄 许可证
-
-本项目遵循 [MIT License] 协议。

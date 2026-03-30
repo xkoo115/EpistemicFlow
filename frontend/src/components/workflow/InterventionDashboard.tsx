@@ -87,7 +87,7 @@ export const InterventionDashboard: React.FC<InterventionDashboardProps> = ({
   }, [sessionId, modifiedContent, hitlData.originalProposal, hyperparameters, onResume]);
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full', className)} data-testid="intervention-dashboard">
       {/* 顶部说明区域 */}
       <div className="px-6 py-4 border-b border-border bg-card">
         <div className="flex items-start gap-3">

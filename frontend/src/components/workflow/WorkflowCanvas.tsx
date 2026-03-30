@@ -170,9 +170,10 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         'transition-all duration-300 ease-in-out',
         className
       )}
+      data-testid="workflow-canvas"
     >
       {/* 状态指示器（右上角） */}
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10" data-testid="workflow-status-indicator">
         <div
           className={cn(
             'px-3 py-1.5 rounded-full text-xs font-medium',

@@ -358,7 +358,7 @@ export const AgentSidebar: React.FC = () => {
   }
 
   return (
-    <div className={cn('h-full flex flex-col bg-dark-bg-primary')}>
+    <div className={cn('h-full flex flex-col bg-dark-bg-primary')} data-testid="agent-sidebar">
       {/* ================================================================== */}
       {/* 上半部分:智能体列表 */}
       {/* ================================================================== */}
@@ -419,7 +419,7 @@ export const AgentSidebar: React.FC = () => {
         </div>
 
         {/* React Flow 图表 */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0" data-testid="saga-tree">
           <ReactFlow
             nodes={nodes}
             edges={edges}
