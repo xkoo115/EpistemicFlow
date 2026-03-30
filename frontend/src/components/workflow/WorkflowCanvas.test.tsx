@@ -13,6 +13,14 @@ import type {
   InterventionPayload,
 } from '@/types/workflow';
 
+// Mock ResizeObserver (Radix UI 需要)
+class ResizeObserverMock {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+global.ResizeObserver = ResizeObserverMock as any;
+
 // Mock fetch API
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
