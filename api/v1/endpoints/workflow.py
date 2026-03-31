@@ -29,19 +29,19 @@ class WorkflowStateCreate(BaseModel):
     )
     current_stage: WorkflowStage = Field(..., description="当前阶段")
     status: WorkflowStatus = Field(default=WorkflowStatus.PENDING, description="状态")
-    agent_state: Optional[Dict[str, Any]] = Field(None, description="智能体状态")
-    human_feedback: Optional[str] = Field(None, description="人工反馈")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="元数据")
+    agent_state: Dict[str, Any] = Field(default_factory=dict, description="智能体状态")
+    human_feedback: Optional[str] = Field(default=None, description="人工反馈")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="元数据")
 
 
 class WorkflowStateUpdate(BaseModel):
     """更新工作流状态请求模型"""
 
-    status: Optional[WorkflowStatus] = Field(None, description="状态")
-    agent_state: Optional[Dict[str, Any]] = Field(None, description="智能体状态")
-    human_feedback: Optional[str] = Field(None, description="人工反馈")
-    error_message: Optional[str] = Field(None, description="错误信息")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="元数据")
+    status: Optional[WorkflowStatus] = Field(default=None, description="状态")
+    agent_state: Optional[Dict[str, Any]] = Field(default=None, description="智能体状态")
+    human_feedback: Optional[str] = Field(default=None, description="人工反馈")
+    error_message: Optional[str] = Field(default=None, description="错误信息")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="元数据")
 
 
 class WorkflowStateResponse(BaseModel):
@@ -417,9 +417,9 @@ class HumanFeedbackRequest(BaseModel):
     """人类反馈请求模型"""
 
     feedback: str = Field(..., min_length=1, description="反馈内容")
-    action: Optional[str] = Field(None, description="选择的操作")
+    action: Optional[str] = Field(default=None, description="选择的操作")
     additional_data: Optional[Dict[str, Any]] = Field(
-        None, description="额外的结构化数据"
+        default=None, description="额外的结构化数据"
     )
 
 
@@ -581,10 +581,10 @@ class RollbackRequest(BaseModel):
     checkpoint_id: int = Field(..., description="目标检查点ID")
     reason: str = Field(..., min_length=1, description="回滚原因")
     human_instruction: Optional[str] = Field(
-        None, description="人类修改指令（如'增加对比实验'）"
+        default=None, description="人类修改指令（如'增加对比实验'）"
     )
     additional_state: Optional[Dict[str, Any]] = Field(
-        None, description="额外的状态更新"
+        default=None, description="额外的状态更新"
     )
 
 

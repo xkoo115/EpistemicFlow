@@ -5,12 +5,45 @@
 
 /**
  * 工作流执行状态枚举
+ * - PENDING: 待处理
  * - RUNNING: 正常执行中，显示自动生成视图
- * - WAITING_FOR_HUMAN: HITL 挂起，显示结构化干预仪表板
+ * - PAUSED: HITL 挂起，显示结构化干预仪表板
  * - COMPLETED: 工作流完成
- * - ERROR: 执行出错
+ * - FAILED: 执行出错
+ * - CANCELLED: 已取消
  */
-export type WorkflowStatus = 'RUNNING' | 'WAITING_FOR_HUMAN' | 'COMPLETED' | 'ERROR';
+export enum WorkflowStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+}
+
+/**
+ * 工作流阶段枚举
+ */
+export enum WorkflowStage {
+  INITIALIZATION = 'initialization',
+  CONCEPTION = 'conception',
+  LITERATURE_REVIEW = 'literature_review',
+  METHODOLOGY_DESIGN = 'methodology_design',
+  DATA_COLLECTION = 'data_collection',
+  ANALYSIS = 'analysis',
+  WRITING = 'writing',
+  REVIEW = 'review',
+  COMPLETION = 'completion',
+  ERROR = 'error',
+}
+
+/**
+ * 论文类型枚举
+ */
+export enum PaperType {
+  RESEARCH_PAPER = 'research_paper',
+  SURVEY_PAPER = 'survey_paper',
+}
 
 /**
  * 超参数配置接口
