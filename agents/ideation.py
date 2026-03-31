@@ -123,13 +123,13 @@ class IdeationAgent(BaseResearchAgent[IdeationOutput]):
         # 构建分析提示
         analysis_prompt = self._build_analysis_prompt(user_input)
 
-        # 获取结构化输出格式
-        response_format = get_ideation_response_format()
+        # 注意：DeepSeek 不支持 response_format，通过提示词要求 JSON 输出
+        # 不使用 response_format 参数
 
         # 发送消息并获取响应
         response = await self.send_message(
             user_input=analysis_prompt,
-            response_format=response_format,
+            response_format=None,  # 不使用结构化输出，通过提示词控制
             include_context=include_context,
         )
 
@@ -159,7 +159,25 @@ class IdeationAgent(BaseResearchAgent[IdeationOutput]):
 3. 提取研究主题和关键词
 4. 给出分类置信度和推理依据
 
-请返回符合指定格式的 JSON 输出。"""
+请严格按照以下 JSON 格式返回结果（不要包含任何其他文字说明）：
+
+{{
+  "paper_type": "research_paper" 或 "survey_paper",
+  "confidence": 0.0-1.0之间的数字,
+  "reasoning": {{
+    "key_indicators": ["关键指标1", "关键指标2"],
+    "reasoning_steps": ["推理步骤1", "推理步骤2"],
+    "confidence_factors": ["置信度因素1", "置信度因素2"]
+  }},
+  "research_topic": "研究主题",
+  "keywords": ["关键词1", "关键词2", "关键词3"]
+}}
+
+注意：
+- paper_type 只能是 "research_paper" 或 "survey_paper"
+- confidence 是 0.0 到 1.0 之间的浮点数
+- keywords 应包含 3-8 个核心关键词
+- 必须返回纯 JSON 格式，不要包含 markdown 代码块标记"""
 
     def _parse_response(self, response: ChatResponse) -> IdeationOutput:
         """

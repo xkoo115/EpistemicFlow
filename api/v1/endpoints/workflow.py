@@ -570,6 +570,109 @@ async def resume_workflow(
         )
 
 
+@router.post("/{session_id}/resume")
+async def resume_workflow_simple(
+    session_id: str,
+    request: dict,
+    db: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
+    """
+    简化的工作流恢复接口
+
+    用于前端 HITL 审核。
+    """
+    repository = WorkflowStateRepository(db)
+
+    try:
+        # 获取最新的工作流状态
+        states = await repository.get_by_session_id(session_id, limit=1)
+        if not states:
+            raise HTTPException(status_code=404, detail="会话不存在")
+
+        workflow_state = states[0]
+
+        # 获取操作类型
+        action = request.get("action", "approve")
+        feedback = request.get("feedback", {})
+
+        print(f"[DEBUG] 恢复工作流: session_id={session_id}, action={action}")
+
+        # 根据操作类型处理
+        if action == "approve":
+            # 批准：继续执行写作阶段
+            await repository.update_status(
+                workflow_state.id,
+                WorkflowStatus.RUNNING,
+            )
+
+            # 启动写作智能体
+            import asyncio
+            from api.v1.endpoints.workflow_start import _run_writing_agent
+
+            # 获取研究结果
+            agent_state = workflow_state.agent_state_json or {}
+            research_result = agent_state.get("research_result", {})
+
+            print(f"[DEBUG] 启动写作智能体...")
+            asyncio.ensure_future(_run_writing_agent(
+                session_id=session_id,
+                workflow_id=workflow_state.id,
+                research_result=research_result,
+            ))
+
+            return {
+                "session_id": session_id,
+                "status": "running",
+                "message": "工作流已恢复，正在执行写作阶段",
+                "action": action,
+            }
+
+        elif action == "modify":
+            # 修改：重新搜索文献
+            await repository.update_status(
+                workflow_state.id,
+                WorkflowStatus.RUNNING,
+            )
+
+            # TODO: 使用新的关键词重新搜索
+            # asyncio.ensure_future(_run_research_agent(...))
+
+            return {
+                "session_id": session_id,
+                "status": "running",
+                "message": "工作流已恢复，正在重新搜索文献",
+                "action": action,
+            }
+
+        elif action == "reject":
+            # 拒绝：终止工作流
+            await repository.update_status(
+                workflow_state.id,
+                WorkflowStatus.FAILED,
+                error_message="用户拒绝研究结果",
+            )
+
+            return {
+                "session_id": session_id,
+                "status": "failed",
+                "message": "工作流已终止",
+                "action": action,
+            }
+
+        else:
+            raise HTTPException(status_code=400, detail=f"未知操作: {action}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 恢复工作流失败: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, detail=f"恢复工作流失败: {str(e)}"
+        )
+
+
 # ============================================================================
 # Saga 回滚与分叉接口
 # ============================================================================

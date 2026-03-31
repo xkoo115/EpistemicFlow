@@ -166,6 +166,39 @@ class WorkflowStateRepository:
 
         return workflow_state
 
+    async def update_stage(
+        self,
+        state_id: int,
+        stage: WorkflowStage,
+    ) -> Optional[WorkflowState]:
+        """更新工作流阶段
+
+        Args:
+            state_id: 状态ID
+            stage: 新阶段
+
+        Returns:
+            Optional[WorkflowState]: 更新后的工作流状态记录
+        """
+        stmt = (
+            update(WorkflowState)
+            .where(WorkflowState.id == state_id)
+            .values(
+                current_stage=stage,
+                updated_at=func.now(),
+            )
+            .returning(WorkflowState)
+        )
+
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+
+        workflow_state = result.scalar_one_or_none()
+        if workflow_state:
+            await self.session.refresh(workflow_state)
+
+        return workflow_state
+
     async def update_agent_state(
         self,
         state_id: int,

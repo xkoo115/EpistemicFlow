@@ -67,6 +67,7 @@ coverage.xml
 *.log
 logs/
 test-results/
+nul
 
 # ==========================================
 # 6. AutoGen 与 AI 代理专属临时文件 (远期考虑)

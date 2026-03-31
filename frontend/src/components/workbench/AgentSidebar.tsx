@@ -1,18 +1,18 @@
 /**
  * AgentSidebar - 智能体侧边栏组件
- * 
+ *
  * 功能说明:
  * 1. 上半部分:展示当前活跃的智能体列表,使用脉冲动画表现状态
  * 2. 下半部分:使用 React Flow 渲染 Saga 时间旅行分叉树
  * 3. 支持点击历史节点触发回滚操作
- * 
+ *
  * 核心特性:
  * - 智能体实时状态展示(脉冲动画/状态指示灯)
  * - Saga 状态机可视化(垂直流程树,支持分叉)
  * - 时间旅行回滚交互(点击节点弹出模态框)
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Bot, Network, Clock, Activity } from 'lucide-react'
 import {
@@ -40,6 +40,16 @@ import { AgentStatus } from '@/types/saga'
 
 // 导入回滚模态框组件
 import { RollbackModal } from './RollbackModal'
+
+/**
+ * ============================================================================
+ * 组件 Props 接口
+ * ============================================================================
+ */
+export interface AgentSidebarProps {
+  /** 会话 ID */
+  sessionId?: string
+}
 
 /**
  * ============================================================================
@@ -297,12 +307,126 @@ const convertCheckpointsToFlowElements = (
  * AgentSidebar 主组件
  * ============================================================================
  */
-export const AgentSidebar: React.FC = () => {
+export const AgentSidebar: React.FC<AgentSidebarProps> = ({ sessionId }) => {
   // 状态管理
-  const [agents] = useState<Agent[]>(MOCK_AGENTS)
-  const [checkpoints] = useState<SagaCheckpoint[]>(MOCK_SAGA_CHECKPOINTS)
+  const [agents, setAgents] = useState<Agent[]>(MOCK_AGENTS)
+  const [checkpoints, setCheckpoints] = useState<SagaCheckpoint[]>(MOCK_SAGA_CHECKPOINTS)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<SagaCheckpoint | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  /**
+   * 从后端获取智能体状态和 Saga 检查点
+   */
+  useEffect(() => {
+    if (!sessionId) return
+
+    const fetchWorkflowData = async () => {
+      setIsLoading(true)
+      try {
+        // 获取工作流状态
+        const response = await fetch(`/api/v1/workflows/${sessionId}/status`)
+        if (response.ok) {
+          const data = await response.json()
+          console.log('[AgentSidebar] 工作流状态:', data)
+
+          // 根据工作流状态更新智能体列表
+          const updatedAgents: Agent[] = []
+          
+          // 根据当前阶段添加智能体
+          if (data.current_stage === 'initialization' || data.current_stage === 'conception') {
+            updatedAgents.push({
+              id: 'ideation-agent',
+              name: '构思智能体',
+              status: data.status === 'running' ? AgentStatus.BUSY : 
+                      data.status === 'paused' ? AgentStatus.SUSPENDED :
+                      data.status === 'failed' ? AgentStatus.ERROR : AgentStatus.IDLE,
+              description: '分析研究意图并进行分类',
+              lastActiveTime: data.updated_at || new Date().toISOString(),
+              taskCount: 1,
+            })
+          }
+          
+          if (data.current_stage === 'research' || data.current_stage === 'writing') {
+            updatedAgents.push({
+              id: 'research-agent',
+              name: '研究智能体',
+              status: AgentStatus.BUSY,
+              description: '执行文献检索和分析',
+              lastActiveTime: new Date().toISOString(),
+              taskCount: 5,
+            })
+          }
+          
+          // 如果没有智能体，显示默认的构思智能体
+          if (updatedAgents.length === 0) {
+            updatedAgents.push({
+              id: 'ideation-agent',
+              name: '构思智能体',
+              status: data.status === 'running' ? AgentStatus.BUSY : AgentStatus.IDLE,
+              description: '分析研究意图并进行分类',
+              lastActiveTime: new Date().toISOString(),
+              taskCount: 0,
+            })
+          }
+          
+          setAgents(updatedAgents)
+          
+          // 更新 Saga 检查点
+          const updatedCheckpoints: SagaCheckpoint[] = [
+            {
+              checkpoint_id: 'cp-init',
+              parent_id: null,
+              stage_name: '初始化',
+              timestamp: data.updated_at || new Date().toISOString(),
+              status: data.current_stage !== 'initialization' ? 'completed' : 'running',
+            },
+          ]
+          
+          if (data.current_stage === 'conception') {
+            updatedCheckpoints.push({
+              checkpoint_id: 'cp-conception',
+              parent_id: 'cp-init',
+              stage_name: '构思阶段',
+              timestamp: new Date().toISOString(),
+              status: 'running',
+            })
+          } else if (data.current_stage !== 'initialization') {
+            updatedCheckpoints.push({
+              checkpoint_id: 'cp-conception',
+              parent_id: 'cp-init',
+              stage_name: '构思阶段',
+              timestamp: new Date().toISOString(),
+              status: 'completed',
+            })
+          }
+          
+          if (data.current_stage === 'research') {
+            updatedCheckpoints.push({
+              checkpoint_id: 'cp-research',
+              parent_id: 'cp-conception',
+              stage_name: '研究阶段',
+              timestamp: new Date().toISOString(),
+              status: 'running',
+            })
+          }
+          
+          setCheckpoints(updatedCheckpoints)
+        }
+      } catch (error) {
+        console.error('[AgentSidebar] 获取工作流数据失败:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchWorkflowData()
+
+    // 设置轮询间隔（每2秒更新一次）
+    const interval = setInterval(fetchWorkflowData, 2000)
+
+    return () => clearInterval(interval)
+  }, [sessionId])
 
   // 将检查点转换为 React Flow 元素
   const { initialNodes, initialEdges } = useMemo(() => {

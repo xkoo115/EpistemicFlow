@@ -238,6 +238,10 @@ class EventBus:
         # 推送到订阅者
         async with self._lock:
             for session_id, subscription in self._subscriptions.items():
+                # 检查 session_id 匹配（如果事件有 session_id）
+                if event.session_id and event.session_id != session_id:
+                    continue
+
                 # 检查事件类型过滤
                 if subscription.event_types and event.event_type not in subscription.event_types:
                     continue

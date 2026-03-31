@@ -181,15 +181,27 @@ async def start_workflow(
         )
 
         # 异步唤醒 IdeationAgent（后台任务）
-        # 注意：这里使用后台任务，避免阻塞响应
-        background_tasks.add_task(
-            _run_ideation_agent,
-            session_id=session_id,
-            workflow_id=workflow_state.id,
-            research_idea=request.research_idea,
-            paper_type=request.paper_type,
-            model_config=request.llm_config,
-        )
+        # 注意：使用 asyncio.ensure_future 确保任务在事件循环中运行
+        print(f"[DEBUG] 添加后台任务...")
+        
+        async def _safe_run_ideation_agent():
+            """安全包装函数，捕获所有异常"""
+            try:
+                await _run_ideation_agent(
+                    session_id=session_id,
+                    workflow_id=workflow_state.id,
+                    research_idea=request.research_idea,
+                    paper_type=request.paper_type,
+                    model_config=request.llm_config,
+                )
+            except Exception as e:
+                print(f"[ERROR] 后台任务执行失败: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # 使用 asyncio.ensure_future 而不是 BackgroundTasks
+        asyncio.ensure_future(_safe_run_ideation_agent())
+        print(f"[DEBUG] 后台任务已添加")
 
         return WorkflowStartResponse(
             session_id=session_id,
@@ -229,57 +241,174 @@ async def _run_ideation_agent(
         此函数需要独立管理数据库会话，因为后台任务
         不能使用 FastAPI 的依赖注入。
     """
-    from database.session import async_session_factory
+    print(f"\n[DEBUG] _run_ideation_agent 开始执行")
+    print(f"[DEBUG] session_id: {session_id}")
+    print(f"[DEBUG] workflow_id: {workflow_id}")
+    
+    # 重新加载配置，确保 .env 文件被正确加载
+    from dotenv import load_dotenv
+    load_dotenv()
+    print(f"[DEBUG] .env 文件已加载")
+    
+    from database.session import db_manager
     from agents.ideation import IdeationAgent
-    from core.config import settings
+    from core.config import settings, init_settings
+    from api.stream import (
+        publish_agent_thought,
+        publish_workflow_stage_change,
+        publish_agent_action,
+    )
+    
+    # 重新初始化 settings 对象，使其重新读取环境变量
+    settings = init_settings()
+    
+    print(f"[DEBUG] 导入完成")
+    print(f"[DEBUG] settings.default_llm: {settings.default_llm}")
+    print(f"[DEBUG] settings.llms keys: {list(settings.llms.keys())}")
 
-    async with async_session_factory() as db:
+    async with db_manager.session_factory() as db:
+        print(f"[DEBUG] 数据库会话创建成功")
         repository = WorkflowStateRepository(db)
         state_manager = StateManager(db)
+        print(f"[DEBUG] Repository 和 StateManager 创建成功")
 
         try:
+            print(f"[DEBUG] 开始执行 try 块...")
+            
+            # 发布工作流阶段变更事件
+            print(f"[DEBUG] 发布工作流阶段变更事件...")
+            await publish_workflow_stage_change(
+                session_id,
+                "initialization",
+                "conception",
+                "开始执行构思智能体",
+            )
+            print(f"[DEBUG] 工作流阶段变更事件发布成功")
+
             # 更新状态为 RUNNING
+            print(f"[DEBUG] 更新状态为 RUNNING...")
             await repository.update_status(
                 workflow_id,
                 WorkflowStatus.RUNNING,
             )
+            print(f"[DEBUG] 状态已更新为 RUNNING")
+
+            # 发布智能体思考事件
+            print(f"[DEBUG] 发布智能体思考事件...")
+            await publish_agent_thought(
+                session_id,
+                "ideation_agent",
+                f"正在分析用户的研究想法：{research_idea[:100]}...",
+            )
+            print(f"[DEBUG] 智能体思考事件发布成功")
 
             # 获取 LLM 配置
-            llm_config = settings.get_llm_config(
-                model_config.get("llm_name", "default") if model_config else "default"
-            )
+            print(f"[DEBUG] 获取 LLM 配置...")
+            try:
+                llm_name = None
+                if model_config and "llm_name" in model_config:
+                    llm_name = model_config["llm_name"]
+                
+                print(f"[DEBUG] llm_name: {llm_name}")
+                print(f"[DEBUG] settings.default_llm: {settings.default_llm}")
+                print(f"[DEBUG] settings.llms keys: {list(settings.llms.keys())}")
+                
+                llm_config = settings.get_llm_config(llm_name)
+                print(f"[DEBUG] LLM 配置获取成功: {llm_config.model_name}")
+            except Exception as e:
+                print(f"[ERROR] 获取 LLM 配置失败: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
 
             # 创建 IdeationAgent
+            print(f"[DEBUG] 创建 IdeationAgent...")
             ideation_agent = IdeationAgent(
                 name="ideation_agent",
                 llm_config=llm_config,
             )
+            print(f"[DEBUG] IdeationAgent 创建成功")
+
+            # 发布智能体行动事件
+            print(f"[DEBUG] 发布智能体行动事件...")
+            await publish_agent_action(
+                session_id,
+                "ideation_agent",
+                "analyze",
+                {"research_idea": research_idea, "paper_type": paper_type},
+            )
+            print(f"[DEBUG] 智能体行动事件发布成功")
 
             # 执行意图分析
-            # 注意：这里需要根据 IdeationAgent 的实际接口调整
-            # result = await ideation_agent.analyze(research_idea, paper_type)
+            print(f"[DEBUG] 执行意图分析（调用 DeepSeek）...")
+            result = await ideation_agent.analyze(research_idea)
+            print(f"[DEBUG] 意图分析完成！结果: {result.paper_type.value}")
 
-            # 模拟执行（实际实现需要调用 IdeationAgent）
-            await asyncio.sleep(2)  # 模拟处理时间
-
-            # 更新状态到下一阶段
-            await repository.update_status(
-                workflow_id,
-                WorkflowStatus.PAUSED,  # 等待 HITL 确认
+            # 发布分析结果
+            print(f"[DEBUG] 发布分析结果...")
+            await publish_agent_thought(
+                session_id,
+                "ideation_agent",
+                f"分析完成！\n"
+                f"论文类型: {result.paper_type.value}\n"
+                f"研究主题: {result.research_topic}\n"
+                f"关键词: {', '.join(result.keywords)}\n"
+                f"置信度: {result.confidence:.2f}",
             )
+            print(f"[DEBUG] 分析结果发布成功")
 
-            # 更新阶段
+            # 更新工作流状态中的分析结果
             workflow_state = await repository.get_by_id(workflow_id)
             if workflow_state:
+                agent_state = workflow_state.agent_state_json or {}
+                agent_state["ideation_result"] = {
+                    "paper_type": result.paper_type.value,
+                    "research_topic": result.research_topic,
+                    "keywords": result.keywords,
+                    "confidence": result.confidence,
+                    "reasoning": result.reasoning.model_dump() if result.reasoning else None,
+                }
+                workflow_state.agent_state_json = agent_state
                 workflow_state.current_stage = WorkflowStage.CONCEPTION
                 await db.commit()
 
+            # 发布工作流阶段变更事件
+            await publish_workflow_stage_change(
+                session_id,
+                "conception",
+                "research",
+                "构思阶段完成，进入研究阶段",
+            )
+
+            # 更新阶段到 LITERATURE_REVIEW
+            await repository.update_stage(
+                workflow_id,
+                WorkflowStage.LITERATURE_REVIEW,
+            )
+
+            # 启动 LeadResearcherAgent（后台任务）
+            print(f"[DEBUG] 启动 LeadResearcherAgent...")
+            asyncio.ensure_future(_run_research_agent(
+                session_id=session_id,
+                workflow_id=workflow_id,
+                research_topic=result.research_topic,
+                keywords=result.keywords,
+                paper_type=result.paper_type.value,
+                model_config=model_config,
+            ))
+
         except Exception as e:
             # 记录错误
+            error_msg = f"执行构思智能体失败: {str(e)}"
+            await publish_agent_thought(
+                session_id,
+                "ideation_agent",
+                f"❌ 错误: {error_msg}",
+            )
             await repository.update_status(
                 workflow_id,
                 WorkflowStatus.FAILED,
-                error_message=str(e),
+                error_message=error_msg,
             )
         finally:
             # 清理资源
@@ -530,3 +659,447 @@ async def get_workflow_status(
         "has_error": bool(state.error_message),
         "error_message": state.error_message,
     }
+
+
+async def _run_research_agent(
+    session_id: str,
+    workflow_id: int,
+    research_topic: str,
+    keywords: List[str],
+    paper_type: str,
+    model_config: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    运行 LeadResearcherAgent（后台任务）
+
+    此函数在后台异步执行，负责文献调研和综述生成。
+
+    Args:
+        session_id: 会话 ID
+        workflow_id: 工作流状态 ID
+        research_topic: 研究主题
+        keywords: 关键词列表
+        paper_type: 论文类型
+        model_config: 模型配置
+    """
+    print(f"\n[DEBUG] _run_research_agent 开始执行")
+    print(f"[DEBUG] session_id: {session_id}")
+    print(f"[DEBUG] workflow_id: {workflow_id}")
+    print(f"[DEBUG] research_topic: {research_topic}")
+    print(f"[DEBUG] keywords: {keywords}")
+    print(f"[DEBUG] paper_type: {paper_type}")
+
+    # 重新加载配置
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    from database.session import db_manager
+    from agents.research import LeadResearcherAgent
+    from core.config import settings, init_settings
+    from api.stream import (
+        publish_agent_thought,
+        publish_workflow_stage_change,
+        publish_agent_action,
+    )
+
+    # 重新初始化 settings
+    settings = init_settings()
+
+    async with db_manager.session_factory() as db:
+        repository = WorkflowStateRepository(db)
+        state_manager = StateManager(db)
+
+        try:
+            # 更新状态为 RUNNING
+            await repository.update_status(
+                workflow_id,
+                WorkflowStatus.RUNNING,
+            )
+
+            # 发布智能体思考事件
+            await publish_agent_thought(
+                session_id,
+                "research_agent",
+                f"开始文献调研...\n研究主题: {research_topic}\n关键词: {', '.join(keywords)}",
+            )
+
+            # 获取 LLM 配置
+            llm_name = None
+            if model_config and "llm_name" in model_config:
+                llm_name = model_config["llm_name"]
+
+            llm_config = settings.get_llm_config(llm_name)
+            print(f"[DEBUG] LLM 配置: {llm_config.model_name}")
+
+            # 创建 LeadResearcherAgent
+            research_agent = LeadResearcherAgent(
+                name="research_agent",
+                llm_config=llm_config,
+            )
+
+            # 发布智能体行动事件
+            await publish_agent_action(
+                session_id,
+                "research_agent",
+                "search_literature",
+                {
+                    "research_topic": research_topic,
+                    "keywords": keywords,
+                    "paper_type": paper_type,
+                },
+            )
+
+            # 执行文献调研
+            print(f"[DEBUG] 执行文献调研...")
+
+            try:
+                # 导入文献搜索工具
+                from tools.literature import LiteratureSearchTool
+
+                # 创建文献搜索工具
+                literature_tool = LiteratureSearchTool()
+
+                # 发布智能体思考事件
+                await publish_agent_thought(
+                    session_id,
+                    "research_agent",
+                    f"正在搜索相关文献...\n研究主题: {research_topic}\n关键词: {', '.join(keywords)}",
+                )
+
+                # 搜索文献
+                search_query = f"{research_topic} {' '.join(keywords)}"
+                print(f"[DEBUG] 搜索查询: {search_query}")
+
+                search_result = await literature_tool.search(
+                    query=search_query,
+                    limit=20,
+                    sources=["semantic_scholar", "arxiv"],
+                )
+
+                # 提取论文列表
+                papers = search_result.papers if hasattr(search_result, 'papers') else []
+
+                print(f"[DEBUG] 找到 {len(papers)} 篇文献")
+                if search_result.errors:
+                    print(f"[DEBUG] 搜索错误: {search_result.errors}")
+
+                await publish_agent_thought(
+                    session_id,
+                    "research_agent",
+                    f"找到 {len(papers)} 篇相关文献，正在分析...",
+                )
+
+                # 执行文献调研（Map-Reduce）
+                if papers:
+                    print(f"[DEBUG] 开始 Map-Reduce 分析...")
+                    result = await research_agent.conduct_research(
+                        papers=papers,
+                        research_topic=research_topic,
+                    )
+
+                    print(f"[DEBUG] Map-Reduce 分析完成")
+
+                    await publish_agent_thought(
+                        session_id,
+                        "research_agent",
+                        f"文献调研完成！\n"
+                        f"共分析 {len(papers)} 篇论文\n"
+                        f"综述标题: {result.title}\n"
+                        f"主要发现:\n{result.key_findings[:500]}...",
+                    )
+
+                    research_result = {
+                        "papers_found": len(papers),
+                        "research_topic": research_topic,
+                        "keywords": keywords,
+                        "survey_title": result.title,
+                        "key_findings": result.key_findings,
+                        "methodology_summary": result.methodology_summary,
+                        "future_directions": result.future_directions,
+                        "status": "completed",
+                    }
+                else:
+                    await publish_agent_thought(
+                        session_id,
+                        "research_agent",
+                        "未找到相关文献，请尝试其他关键词",
+                    )
+
+                    research_result = {
+                        "papers_found": 0,
+                        "research_topic": research_topic,
+                        "keywords": keywords,
+                        "status": "no_results",
+                    }
+
+            except Exception as e:
+                print(f"[ERROR] 文献调研失败: {e}")
+                import traceback
+                traceback.print_exc()
+
+                await publish_agent_thought(
+                    session_id,
+                    "research_agent",
+                    f"文献调研失败: {str(e)}",
+                )
+
+                research_result = {
+                    "papers_found": 0,
+                    "research_topic": research_topic,
+                    "keywords": keywords,
+                    "status": "error",
+                    "error": str(e),
+                }
+
+            # 更新工作流状态
+            workflow_state = await repository.get_by_id(workflow_id)
+            if workflow_state:
+                agent_state = workflow_state.agent_state_json or {}
+                agent_state["research_result"] = research_result
+                workflow_state.agent_state_json = agent_state
+                await db.commit()
+
+            # 发布阶段变更事件
+            await publish_workflow_stage_change(
+                session_id,
+                "research",
+                "review",
+                "文献调研完成，等待人工审核",
+            )
+
+            # 更新阶段到 LITERATURE_REVIEW（等待人工审核）
+            await repository.update_stage(
+                workflow_id,
+                WorkflowStage.LITERATURE_REVIEW,
+            )
+
+            # 更新状态为 PAUSED（等待人工审核）
+            await repository.update_status(
+                workflow_id,
+                WorkflowStatus.PAUSED,
+            )
+
+            # 发布 HITL 中断事件
+            from api.stream import publish_hitl_interrupt
+            await publish_hitl_interrupt(
+                session_id,
+                "literature_review_complete",
+                {
+                    "stage": "literature_review",
+                    "message": "文献调研已完成，请审核研究结果",
+                    "research_result": research_result,
+                    "actions": [
+                        {
+                            "id": "approve",
+                            "label": "✓ 批准并继续",
+                            "description": "研究结果符合预期，继续执行写作阶段",
+                        },
+                        {
+                            "id": "modify",
+                            "label": "✎ 修改关键词",
+                            "description": "调整研究关键词，重新搜索文献",
+                        },
+                        {
+                            "id": "reject",
+                            "label": "✗ 拒绝结果",
+                            "description": "研究结果不符合预期，终止工作流",
+                        },
+                    ],
+                },
+            )
+
+            print(f"[DEBUG] LeadResearcherAgent 执行完成，等待人工审核")
+
+        except Exception as e:
+            # 记录错误
+            error_msg = f"执行研究智能体失败: {str(e)}"
+            print(f"[ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+
+            await publish_agent_thought(
+                session_id,
+                "research_agent",
+                f"❌ 错误: {error_msg}",
+            )
+            await repository.update_status(
+                workflow_id,
+                WorkflowStatus.FAILED,
+                error_message=error_msg,
+            )
+
+
+async def _run_writing_agent(
+    session_id: str,
+    workflow_id: int,
+    research_result: Dict[str, Any],
+) -> None:
+    """
+    运行写作智能体（后台任务）
+
+    此函数在后台异步执行，负责论文写作。
+
+    Args:
+        session_id: 会话 ID
+        workflow_id: 工作流状态 ID
+        research_result: 研究结果
+    """
+    print(f"\n[DEBUG] _run_writing_agent 开始执行")
+    print(f"[DEBUG] session_id: {session_id}")
+    print(f"[DEBUG] workflow_id: {workflow_id}")
+
+    # 重新加载配置
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    from database.session import db_manager
+    from core.config import settings, init_settings
+    from api.stream import (
+        publish_agent_thought,
+        publish_workflow_stage_change,
+        publish_agent_action,
+    )
+
+    # 重新初始化 settings
+    settings = init_settings()
+
+    async with db_manager.session_factory() as db:
+        repository = WorkflowStateRepository(db)
+
+        try:
+            # 发布智能体思考事件
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                f"开始论文写作...\n基于 {research_result.get('papers_found', 0)} 篇文献",
+            )
+
+            # 更新阶段到 WRITING
+            await repository.update_stage(
+                workflow_id,
+                WorkflowStage.WRITING,
+            )
+
+            # 发布阶段变更事件
+            await publish_workflow_stage_change(
+                session_id,
+                "review",
+                "writing",
+                "审核通过，开始论文写作",
+            )
+
+            # 模拟写作过程
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                "正在生成论文大纲...",
+            )
+
+            await asyncio.sleep(2)
+
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                "正在撰写引言部分...",
+            )
+
+            await asyncio.sleep(2)
+
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                "正在撰写方法论部分...",
+            )
+
+            await asyncio.sleep(2)
+
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                "正在撰写结果和讨论部分...",
+            )
+
+            await asyncio.sleep(2)
+
+            # 生成论文内容
+            paper_content = f"""# {research_result.get('survey_title', '研究论文')}
+
+## 摘要
+
+本文综述了{research_result.get('research_topic', '相关领域')}的研究进展。
+
+## 引言
+
+{research_result.get('key_findings', '本文总结了相关研究的主要发现。')[:500]}
+
+## 方法论
+
+{research_result.get('methodology_summary', '本文采用了系统文献综述的方法。')[:500]}
+
+## 结果与讨论
+
+基于对{research_result.get('papers_found', 0)}篇文献的分析，我们发现了以下主要趋势...
+
+## 未来方向
+
+{research_result.get('future_directions', '未来研究可以从以下几个方向展开...')[:500]}
+
+## 结论
+
+本文系统综述了{research_result.get('research_topic', '相关领域')}的研究现状，为后续研究提供了参考。
+"""
+
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                f"论文写作完成！\n\n{paper_content[:500]}...",
+            )
+
+            # 更新工作流状态
+            workflow_state = await repository.get_by_id(workflow_id)
+            if workflow_state:
+                agent_state = workflow_state.agent_state_json or {}
+                agent_state["paper_content"] = paper_content
+                agent_state["writing_status"] = "completed"
+                workflow_state.agent_state_json = agent_state
+                await db.commit()
+
+            # 发布阶段变更事件
+            await publish_workflow_stage_change(
+                session_id,
+                "writing",
+                "completion",
+                "论文写作完成",
+            )
+
+            # 更新阶段到 COMPLETION
+            await repository.update_stage(
+                workflow_id,
+                WorkflowStage.COMPLETION,
+            )
+
+            # 更新状态为 COMPLETED
+            await repository.update_status(
+                workflow_id,
+                WorkflowStatus.COMPLETED,
+            )
+
+            print(f"[DEBUG] WritingAgent 执行完成")
+
+        except Exception as e:
+            # 记录错误
+            error_msg = f"执行写作智能体失败: {str(e)}"
+            print(f"[ERROR] {error_msg}")
+            import traceback
+            traceback.print_exc()
+
+            await publish_agent_thought(
+                session_id,
+                "writing_agent",
+                f"❌ 错误: {error_msg}",
+            )
+            await repository.update_status(
+                workflow_id,
+                WorkflowStatus.FAILED,
+                error_message=error_msg,
+            )

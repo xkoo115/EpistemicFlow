@@ -14,6 +14,7 @@
  */
 
 import React from 'react'
+import { useParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 interface WorkbenchLayoutProps {
@@ -25,6 +26,8 @@ interface WorkbenchLayoutProps {
   rightSidebar?: React.ReactNode
   /** 自定义类名 */
   className?: string
+  /** 会话 ID (可选，如果不提供则从路由参数获取) */
+  sessionId?: string
 }
 
 /**
@@ -36,7 +39,18 @@ export const WorkbenchLayout: React.FC<WorkbenchLayoutProps> = ({
   mainCanvas,
   rightSidebar,
   className,
+  sessionId: propSessionId,
 }) => {
+  // 从路由参数获取 sessionId (如果未通过 props 提供)
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>()
+  const sessionId = propSessionId || routeSessionId
+
+  // 将 sessionId 注入到子组件中
+  const renderSidebarWithSessionId = (sidebar: React.ReactNode) => {
+    if (!sidebar || !sessionId) return sidebar
+    return React.cloneElement(sidebar as React.ReactElement, { sessionId })
+  }
+
   return (
     <div
       className={cn(
@@ -61,7 +75,7 @@ export const WorkbenchLayout: React.FC<WorkbenchLayoutProps> = ({
           'p-4'
         )}
       >
-        {leftSidebar}
+        {renderSidebarWithSessionId(leftSidebar)}
       </aside>
 
       {/* 中栏 - 主工作画布 (Main Canvas) */}
@@ -76,7 +90,7 @@ export const WorkbenchLayout: React.FC<WorkbenchLayoutProps> = ({
           'p-6'
         )}
       >
-        {mainCanvas}
+        {renderSidebarWithSessionId(mainCanvas)}
       </main>
 
       {/* 右栏 - 实时活动日志 (Activity Log) */}
@@ -91,7 +105,7 @@ export const WorkbenchLayout: React.FC<WorkbenchLayoutProps> = ({
           'p-4'
         )}
       >
-        {rightSidebar}
+        {renderSidebarWithSessionId(rightSidebar)}
       </aside>
     </div>
   )

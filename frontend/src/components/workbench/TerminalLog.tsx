@@ -37,21 +37,27 @@ export interface TerminalLogProps {
   maxLogEntries?: number
   /** 是否显示工具栏 */
   showToolbar?: boolean
+  /** 会话 ID (用于构建 SSE 端点) */
+  sessionId?: string
 }
 
 /**
  * TerminalLog 组件
  */
 export const TerminalLog: React.FC<TerminalLogProps> = ({
-  endpoint = '/api/stream/events/default',
+  endpoint,
   className,
   maxLogEntries = 1000,
   showToolbar = true,
+  sessionId,
 }) => {
+  // 构建 SSE 端点 URL
+  const sseUrl = endpoint || (sessionId ? `/api/stream/events/${sessionId}` : '/api/stream/events/default')
+
   // SSE 连接状态
   const { messages, isConnected, isReconnecting, error, reconnect, disconnect, clearMessages } =
     useSSEStream({
-      url: endpoint,
+      url: sseUrl,
       parseMessage: (data) => {
         try {
           return JSON.parse(data)

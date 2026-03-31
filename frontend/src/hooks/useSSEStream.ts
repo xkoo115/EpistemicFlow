@@ -206,11 +206,39 @@ export function useSSEStream(options: UseSSEStreamOptions): UseSSEStreamReturn {
 
       // 绑定事件处理器
       eventSource.onopen = handleOpen
-      eventSource.onmessage = handleMessage
       eventSource.onerror = handleError
 
-      // 监听特定类型的事件 (如果后端发送了自定义事件类型)
-      // eventSource.addEventListener('custom-event', handleMessage)
+      // 监听所有消息（包括默认 message 事件）
+      eventSource.onmessage = handleMessage
+
+      // 监听特定类型的事件（后端发送的自定义事件类型）
+      const eventTypes = [
+        'agent_thought',
+        'agent_action',
+        'agent_response',
+        'tool_call_start',
+        'tool_call_result',
+        'tool_call_error',
+        'sandbox_start',
+        'sandbox_stdout',
+        'sandbox_stderr',
+        'sandbox_complete',
+        'sandbox_error',
+        'workflow_start',
+        'workflow_stage_change',
+        'workflow_checkpoint',
+        'workflow_complete',
+        'workflow_error',
+        'hitl_interrupt',
+        'hitl_resume',
+        'hitl_feedback',
+        'heartbeat',
+        'error',
+      ]
+
+      eventTypes.forEach((eventType) => {
+        eventSource.addEventListener(eventType, handleMessage as EventListener)
+      })
     } catch (err) {
       console.error('[useSSEStream] 连接失败:', err)
       handleError(new Event('connection-failed'))

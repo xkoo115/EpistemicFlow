@@ -103,7 +103,8 @@ class IdeationOutput(BaseModel):
     )
 
     # 原始输入摘要
-    input_summary: str = Field(
+    input_summary: Optional[str] = Field(
+        default=None,
         description="用户输入的简要摘要",
     )
 
