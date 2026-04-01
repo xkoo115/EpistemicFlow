@@ -1,14 +1,13 @@
 """
-工作流启动与导出 API 端点
+工作流启动与导出 API 端点（彻底重构版）
 
-本模块提供端到端闭环的关键接口：
-- POST /workflows/start: 启动新的科研工作流
-- GET /workflows/{session_id}/export/latex: 导出 LaTeX 手稿
+本模块使用 agent_framework 原生架构实现。
 
-设计原则：
-- 启动接口接收用户初始需求，创建 Saga 起点
-- 异步唤醒 IdeationAgent，开始工作流
-- 导出接口返回符合学术规范的 LaTeX 源码
+核心变更：
+1. 使用 Agent + OpenAIChatClient 调用 LLM
+2. 使用真实文献检索工具
+3. 完整实现 HITL 后的流程
+4. 删除所有 mock 代码
 """
 
 from typing import Optional, Dict, Any, List, Literal
@@ -758,6 +757,8 @@ async def _run_research_agent(
 
                 # 创建文献搜索工具
                 literature_tool = LiteratureSearchTool()
+                
+                print(f"[DEBUG] LiteratureSearchTool 创建成功")
 
                 # 发布智能体思考事件
                 await publish_agent_thought(
@@ -770,16 +771,34 @@ async def _run_research_agent(
                 search_query = f"{research_topic} {' '.join(keywords)}"
                 print(f"[DEBUG] 搜索查询: {search_query}")
 
+                # 先尝试只用 arxiv（更稳定）
+                print(f"[DEBUG] 开始搜索 arxiv...")
                 search_result = await literature_tool.search(
                     query=search_query,
                     limit=20,
-                    sources=["semantic_scholar", "arxiv"],
+                    sources=["arxiv"],
                 )
+                
+                print(f"[DEBUG] arxiv 搜索完成")
+                print(f"[DEBUG] 搜索结果类型: {type(search_result)}")
+                print(f"[DEBUG] 搜索结果属性: {dir(search_result)}")
 
                 # 提取论文列表
                 papers = search_result.papers if hasattr(search_result, 'papers') else []
 
                 print(f"[DEBUG] 找到 {len(papers)} 篇文献")
+                
+                # 如果 arxiv 没有结果，尝试 semantic_scholar
+                if not papers:
+                    print(f"[DEBUG] arxiv 无结果，尝试 semantic_scholar...")
+                    search_result = await literature_tool.search(
+                        query=search_query,
+                        limit=20,
+                        sources=["semantic_scholar"],
+                    )
+                    papers = search_result.papers if hasattr(search_result, 'papers') else []
+                    print(f"[DEBUG] semantic_scholar 找到 {len(papers)} 篇文献")
+                
                 if search_result.errors:
                     print(f"[DEBUG] 搜索错误: {search_result.errors}")
 

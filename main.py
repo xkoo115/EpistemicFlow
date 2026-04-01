@@ -1,6 +1,11 @@
 """
 EpistemicFlow 主应用入口
 AI驱动的自动化科研平台
+
+架构版本：agent_framework 原生架构
+- 使用 WorkflowBuilder 构建工作流拓扑
+- 使用原生 WorkflowEvent 事件流
+- 使用 CheckpointStorage 管理状态
 """
 
 from contextlib import asynccontextmanager
@@ -12,6 +17,10 @@ from core.config import settings
 from database.session import init_database, close_database, get_db_session
 from api.v1 import router as v1_router
 from api.stream import router as stream_router
+
+# 导入原生架构路由（可选启用）
+from api.stream_native import router as stream_native_router
+from api.v1.endpoints.workflow_start_native import router as workflow_native_router
 
 
 @asynccontextmanager
@@ -59,11 +68,25 @@ app.include_router(
     tags=["v1"],
 )
 
-# 注册SSE流式路由
+# 注册SSE流式路由（保留旧版以兼容）
 app.include_router(
     stream_router,
     prefix=f"{settings.app.api_prefix}",
     tags=["stream"],
+)
+
+# 注册原生 SSE 流式路由（新版）
+app.include_router(
+    stream_native_router,
+    prefix=f"{settings.app.api_prefix}/native",
+    tags=["stream-native"],
+)
+
+# 注册原生工作流路由（新版）
+app.include_router(
+    workflow_native_router,
+    prefix=f"{settings.app.api_prefix}/v1/workflows/native",
+    tags=["workflow-native"],
 )
 
 
@@ -77,8 +100,21 @@ async def root():
     return {
         "message": "欢迎使用 EpistemicFlow - AI驱动的自动化科研平台",
         "version": "0.1.0",
+        "architecture": "agent_framework_native",
         "docs": "/docs" if settings.app.debug else None,
         "environment": settings.app.environment.value,
+        "endpoints": {
+            "legacy": {
+                "start": f"{settings.app.api_prefix}/v1/workflows/start",
+                "stream": f"{settings.app.api_prefix}/stream/workflow/{{session_id}}",
+            },
+            "native": {
+                "start": f"{settings.app.api_prefix}/v1/workflows/native/start",
+                "stream": f"{settings.app.api_prefix}/native/stream/workflow/{{session_id}}",
+                "resume": f"{settings.app.api_prefix}/v1/workflows/native/resume",
+                "checkpoints": f"{settings.app.api_prefix}/v1/workflows/native/{{session_id}}/checkpoints",
+            },
+        },
     }
 
 

@@ -567,16 +567,15 @@ class BaseResearchAgent(ABC, Generic[T]):
         # 构建消息
         messages = self._build_messages(user_input, include_context)
 
-        # 获取聊天选项
-        options = ModelClientFactory.get_chat_options(
-            self._llm_config,
-            response_format=response_format,
-        )
-
-        # 调用模型
-        response = await self._agent.client.get_response(
+        # 调用模型 - 使用 Agent.run 方法
+        agent_response = await self._agent.run(
             messages=messages,
-            options=options,
+        )
+        
+        # 将 AgentResponse 转换为 ChatResponse
+        # AgentResponse.text 包含所有消息的文本内容
+        response = ChatResponse(
+            messages=agent_response.messages,
         )
 
         # 更新会话历史
